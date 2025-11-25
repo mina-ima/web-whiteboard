@@ -1,0 +1,7 @@
+{
+  "name": "Gemini SmartBoard",
+  "description": "A collaborative-style electronic whiteboard powered by Gemini. Sketch, add sticky notes, upload images, and use AI to brainstorm ideas or summarize your board.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
