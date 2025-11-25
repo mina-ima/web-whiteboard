@@ -19,19 +19,35 @@
     </style>
     <!-- Polyfills for simple-peer/y-webrtc -->
     <script>
+      // Initialize globals for libraries that expect Node.js environment
       window.global = window;
-      window.process = {
-        env: { NODE_ENV: 'production' },
-        nextTick: function(fn) { setTimeout(fn, 0); },
-        version: ''
-      };
+      
+      // Safely setup process env without overwriting existing keys (like API_KEY)
+      if (typeof window.process === 'undefined') {
+        window.process = { env: {} };
+      }
+      if (typeof window.process.env === 'undefined') {
+        window.process.env = {};
+      }
+      // Ensure NODE_ENV is set
+      window.process.env.NODE_ENV = 'production';
+      
+      // Polyfill nextTick
+      if (!window.process.nextTick) {
+        window.process.nextTick = function(fn) { setTimeout(fn, 0); };
+      }
+      
+      // Polyfill version
+      if (!window.process.version) {
+        window.process.version = '';
+      }
     </script>
   <script type="importmap">
 {
   "imports": {
     "html2canvas": "https://aistudiocdn.com/html2canvas@^1.4.1",
     "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
-    "uuid": "https://aistudiocdn.com/uuid@^13.0.0",
+    "uuid": "https://esm.sh/uuid@9.0.1",
     "react-dom": "https://aistudiocdn.com/react-dom@^19.2.0",
     "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
     "react": "https://aistudiocdn.com/react@^19.2.0",
@@ -39,9 +55,7 @@
     "@heroicons/react/": "https://aistudiocdn.com/@heroicons/react@^2.2.0/",
     "buffer": "https://esm.sh/buffer@6.0.3",
     "yjs": "https://esm.sh/yjs@13.6.10",
-    "y-protocols": "https://esm.sh/y-protocols@1.0.6",
-    "y-protocols/": "https://esm.sh/y-protocols@1.0.6/",
-    "y-webrtc": "https://esm.sh/y-webrtc@10.3.0?external=yjs,y-protocols"
+    "y-webrtc": "https://esm.sh/y-webrtc@10.3.0?external=yjs"
   }
 }
 </script>
