@@ -125,7 +125,7 @@ const App: React.FC = () => {
         isOpen={isAiOpen} 
         onClose={() => setIsAiOpen(false)} 
         onAddNotes={handleAddAiNotes}
-        getCanvasSnapshot={async () => await captureBoard() as any} 
+        getCanvasSnapshot={captureBoard} 
       />
     </div>
   );

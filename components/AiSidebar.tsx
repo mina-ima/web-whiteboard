@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { XMarkIcon, SparklesIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import { generateBrainstormingIdeas, analyzeBoard } from '../services/geminiService';
@@ -6,7 +7,7 @@ interface AiSidebarProps {
   isOpen: boolean;
   onClose: () => void;
   onAddNotes: (notes: string[]) => void;
-  getCanvasSnapshot: () => string;
+  getCanvasSnapshot: () => Promise<string>;
 }
 
 export const AiSidebar: React.FC<AiSidebarProps> = ({ isOpen, onClose, onAddNotes, getCanvasSnapshot }) => {
@@ -37,7 +38,7 @@ export const AiSidebar: React.FC<AiSidebarProps> = ({ isOpen, onClose, onAddNote
     setLoading(true);
     setAnalysis(null);
     try {
-      const snapshot = getCanvasSnapshot();
+      const snapshot = await getCanvasSnapshot();
       const result = await analyzeBoard(snapshot);
       setAnalysis(result);
     } catch (e) {
@@ -49,7 +50,7 @@ export const AiSidebar: React.FC<AiSidebarProps> = ({ isOpen, onClose, onAddNote
   };
 
   return (
-    <div className="fixed right-0 top-0 h-full w-80 bg-white shadow-2xl z-40 flex flex-col border-l border-gray-200 transform transition-transform duration-300">
+    <div className="fixed right-0 top-0 h-full w-full max-w-sm bg-white shadow-2xl z-40 flex flex-col border-l border-gray-200 transform transition-transform duration-300">
       <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
         <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
           <SparklesIcon className="w-5 h-5 text-purple-600" />
