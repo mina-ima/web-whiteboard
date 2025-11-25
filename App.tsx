@@ -4,10 +4,22 @@ import { v4 as uuidv4 } from 'uuid';
 import { Whiteboard } from './components/Whiteboard';
 import { Toolbar } from './components/Toolbar';
 import { AiSidebar } from './components/AiSidebar';
+import { LoginScreen } from './components/LoginScreen';
+import { InviteModal } from './components/InviteModal';
 import { ToolType, Path, StickyNote, BoardImage, BoardFile, STICKY_COLORS } from './types';
 import html2canvas from 'html2canvas';
+import { UserIcon, ClipboardDocumentIcon } from '@heroicons/react/24/outline';
+
+interface UserSession {
+  userName: string;
+  roomId: string;
+  passcode: string;
+}
 
 const App: React.FC = () => {
+  const [session, setSession] = useState<UserSession | null>(null);
+  const [showInvite, setShowInvite] = useState(false);
+  
   const [tool, setTool] = useState<ToolType>(ToolType.PEN);
   const [paths, setPaths] = useState<Path[]>([]);
   const [notes, setNotes] = useState<StickyNote[]>([]);
@@ -15,6 +27,13 @@ const App: React.FC = () => {
   const [files, setFiles] = useState<BoardFile[]>([]);
   const [isAiOpen, setIsAiOpen] = useState(false);
   const appContainerRef = useRef<HTMLDivElement>(null);
+
+  const handleLogin = (userName: string, roomId: string, passcode: string, isCreator: boolean) => {
+    setSession({ userName, roomId, passcode });
+    if (isCreator) {
+        setShowInvite(true);
+    }
+  };
 
   const handleClear = () => {
     if (window.confirm('Are you sure you want to clear the board?')) {
@@ -92,13 +111,46 @@ const App: React.FC = () => {
     return '';
   };
 
+  if (!session) {
+    return <LoginScreen onJoin={handleLogin} />;
+  }
+
   return (
     <div className="w-screen h-screen flex flex-col overflow-hidden relative" ref={appContainerRef}>
       {/* Header / Info */}
-      <div className="absolute top-4 left-4 z-30 pointer-events-none select-none">
-        <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Gemini SmartBoard</h1>
-        <p className="text-sm text-slate-500">Collaborate, Brainstorm, Create</p>
+      <div className="absolute top-4 left-4 z-30 pointer-events-none select-none flex items-start gap-4">
+        <div>
+            <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Gemini SmartBoard</h1>
+            <div className="flex items-center gap-3 mt-1">
+            <p className="text-sm text-slate-500 font-medium bg-white/50 backdrop-blur px-2 py-1 rounded-md border border-slate-100 shadow-sm pointer-events-auto cursor-help" title="Click to view invite info" onClick={() => setShowInvite(true)}>
+                Room: <span className="text-indigo-600">{session.roomId}</span>
+            </p>
+            <div className="w-px h-3 bg-slate-300"></div>
+            <div className="flex items-center gap-1 text-sm text-slate-500">
+                <UserIcon className="w-3 h-3" />
+                <span>{session.userName}</span>
+            </div>
+            </div>
+        </div>
       </div>
+
+      <div className="absolute top-4 right-4 z-30">
+        <button 
+            onClick={() => setShowInvite(true)}
+            className="p-2 bg-white text-indigo-600 rounded-full shadow-md hover:bg-gray-50 border border-gray-100 transition-colors"
+            title="Show Invite Info"
+        >
+            <ClipboardDocumentIcon className="w-5 h-5" />
+        </button>
+      </div>
+
+      {showInvite && (
+        <InviteModal 
+            roomId={session.roomId} 
+            passcode={session.passcode} 
+            onClose={() => setShowInvite(false)} 
+        />
+      )}
 
       <Whiteboard 
         tool={tool}
