@@ -3,9 +3,12 @@ import * as Y from 'yjs';
 import { WebrtcProvider } from 'y-webrtc';
 import { Path, StickyNote, BoardImage, BoardFile } from '../types';
 
-// Use a known public signaling server for demo purposes
-// In production, you would host your own signaling server
-const SIGNALING_SERVERS = ['wss://signaling.yjs.dev'];
+// Use a list of public signaling servers for better reliability
+const SIGNALING_SERVERS = [
+  'wss://signaling.yjs.dev',
+  'wss://y-webrtc-signaling-eu.herokuapp.com',
+  'wss://y-webrtc-signaling-us.herokuapp.com'
+];
 
 export const useWhiteboardStore = (roomId: string | null, passcode: string | null, userName: string) => {
   const [paths, setPaths] = useState<Path[]>([]);
@@ -20,27 +23,32 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
   useEffect(() => {
     if (!roomId || !passcode) return;
 
+    console.log(`[YJS] Connecting to room: gemini-board-${roomId}`);
+
     // Initialize Yjs Document
     const ydoc = new Y.Doc();
     ydocRef.current = ydoc;
 
     // Initialize WebRTC Provider (P2P Sync)
-    // We use the roomId + passcode to create a unique room, 
-    // and use the password option to encrypt communication
     const provider = new WebrtcProvider(`gemini-board-${roomId}`, ydoc, {
       password: passcode,
       signaling: SIGNALING_SERVERS,
+      maxConns: 20 + Math.floor(Math.random() * 15), // Randomize max connections slightly
+      filterBcConns: false, // Ensure cross-tab communication works reliably
     });
     providerRef.current = provider;
 
     provider.on('status', (event: { status: string }) => {
+      console.log(`[YJS] Connection status: ${event.status}`);
       setIsConnected(event.status === 'connected');
     });
 
+    provider.on('synced', (event: { synced: boolean }) => {
+        console.log(`[YJS] Synced: ${event.synced}`);
+    });
+
     // Define Yjs Types
-    // We use Y.Array for paths to maintain drawing order
     const yPaths = ydoc.getArray<Path>('paths');
-    // We use Y.Map for items to easily update by ID without scanning arrays
     const yNotes = ydoc.getMap<StickyNote>('notes');
     const yImages = ydoc.getMap<BoardImage>('images');
     const yFiles = ydoc.getMap<BoardFile>('files');
@@ -53,19 +61,24 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
 
     // Observer Changes
     yPaths.observe(() => {
+      // console.log('[YJS] Paths updated');
       setPaths(yPaths.toArray());
     });
     yNotes.observe(() => {
+      // console.log('[YJS] Notes updated');
       setNotes(Array.from(yNotes.values()));
     });
     yImages.observe(() => {
+      // console.log('[YJS] Images updated');
       setImages(Array.from(yImages.values()));
     });
     yFiles.observe(() => {
+      // console.log('[YJS] Files updated');
       setFiles(Array.from(yFiles.values()));
     });
 
     return () => {
+      console.log('[YJS] Disconnecting...');
       provider.destroy();
       ydoc.destroy();
     };
@@ -80,11 +93,6 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
   const deletePaths = useCallback((pathIds: string[]) => {
     const yPaths = ydocRef.current?.getArray<Path>('paths');
     if (!yPaths) return;
-    
-    // Y.Array deletion is index based, which is tricky for concurrent edits.
-    // A simplified approach for this demo:
-    // We rebuild the array without the deleted items.
-    // In a production app, we might use Y.Map for paths too or careful index handling.
     
     ydocRef.current?.transact(() => {
       const current = yPaths.toArray();

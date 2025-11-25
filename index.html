@@ -20,7 +20,11 @@
     <!-- Polyfills for simple-peer/y-webrtc -->
     <script>
       window.global = window;
-      window.process = { env: { NODE_ENV: 'production' } };
+      window.process = {
+        env: { NODE_ENV: 'production' },
+        nextTick: function(fn) { setTimeout(fn, 0); },
+        version: ''
+      };
     </script>
   <script type="importmap">
 {
@@ -28,16 +32,22 @@
     "html2canvas": "https://aistudiocdn.com/html2canvas@^1.4.1",
     "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
     "uuid": "https://aistudiocdn.com/uuid@^13.0.0",
+    "react-dom": "https://aistudiocdn.com/react-dom@^19.2.0",
     "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
     "react": "https://aistudiocdn.com/react@^19.2.0",
     "react/": "https://aistudiocdn.com/react@^19.2.0/",
     "@heroicons/react/": "https://aistudiocdn.com/@heroicons/react@^2.2.0/",
+    "buffer": "https://esm.sh/buffer@6.0.3",
     "yjs": "https://esm.sh/yjs@13.6.10",
-    "y-webrtc": "https://esm.sh/y-webrtc@10.3.0?external=yjs,simple-peer",
-    "simple-peer": "https://esm.sh/simple-peer@9.11.1",
-    "simple-peer/simplepeer.min.js": "https://esm.sh/simple-peer@9.11.1"
+    "y-protocols": "https://esm.sh/y-protocols@1.0.6",
+    "y-protocols/": "https://esm.sh/y-protocols@1.0.6/",
+    "y-webrtc": "https://esm.sh/y-webrtc@10.3.0?external=yjs,y-protocols"
   }
 }
+</script>
+<script type="module">
+  import { Buffer } from 'buffer';
+  window.Buffer = Buffer;
 </script>
 </head>
   <body>
