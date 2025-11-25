@@ -1,4 +1,3 @@
-
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { Path, Point, ToolType, StickyNote, BoardImage, BoardFile, STICKY_COLORS } from '../types';
@@ -15,17 +14,31 @@ import {
 interface WhiteboardProps {
   tool: ToolType;
   paths: Path[];
-  setPaths: React.Dispatch<React.SetStateAction<Path[]>>;
   notes: StickyNote[];
-  setNotes: React.Dispatch<React.SetStateAction<StickyNote[]>>;
   images: BoardImage[];
-  setImages: React.Dispatch<React.SetStateAction<BoardImage[]>>;
   files: BoardFile[];
-  setFiles: React.Dispatch<React.SetStateAction<BoardFile[]>>;
+  
+  // Sync Handlers
+  onPathAdd: (path: Path) => void;
+  onPathsDelete: (ids: string[]) => void;
+  
+  onNoteAdd: (note: StickyNote) => void;
+  onNoteUpdate: (note: StickyNote) => void;
+  onNoteDelete: (id: string) => void;
+
+  onImageUpdate: (image: BoardImage) => void;
+  onImageDelete: (id: string) => void;
+
+  onFileUpdate: (file: BoardFile) => void;
+  onFileDelete: (id: string) => void;
 }
 
 export const Whiteboard: React.FC<WhiteboardProps> = ({ 
-  tool, paths, setPaths, notes, setNotes, images, setImages, files, setFiles
+  tool, paths, notes, images, files,
+  onPathAdd, onPathsDelete,
+  onNoteAdd, onNoteUpdate, onNoteDelete,
+  onImageUpdate, onImageDelete,
+  onFileUpdate, onFileDelete
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -122,35 +135,38 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
   const eraseAt = (pos: Point) => {
     const ERASER_RADIUS = 20; 
 
-    setPaths(prevPaths => prevPaths.filter(path => {
+    // Find paths to delete
+    const pathsToDelete = paths.filter(path => {
       for (let i = 0; i < path.points.length - 1; i++) {
         if (distToSegment(pos, path.points[i], path.points[i + 1]) < ERASER_RADIUS) {
-          return false; 
+          return true; 
         }
       }
-      return true;
-    }));
+      return false;
+    }).map(p => p.id);
 
-    setNotes(prev => prev.filter(note => {
-      return !(
-        pos.x >= note.x && pos.x <= note.x + note.width && 
-        pos.y >= note.y && pos.y <= note.y + note.height
-      );
-    }));
+    if (pathsToDelete.length > 0) {
+      onPathsDelete(pathsToDelete);
+    }
 
-    setImages(prev => prev.filter(img => {
-       return !(
-        pos.x >= img.x && pos.x <= img.x + img.width && 
-        pos.y >= img.y && pos.y <= img.y + (img.height || 200) 
-      );
-    }));
+    // Check items
+    notes.forEach(note => {
+      if (pos.x >= note.x && pos.x <= note.x + note.width && pos.y >= note.y && pos.y <= note.y + note.height) {
+        onNoteDelete(note.id);
+      }
+    });
 
-    setFiles(prev => prev.filter(f => {
-       return !(
-        pos.x >= f.x && pos.x <= f.x + f.width && 
-        pos.y >= f.y && pos.y <= f.y + f.height 
-      );
-    }));
+    images.forEach(img => {
+      if (pos.x >= img.x && pos.x <= img.x + img.width && pos.y >= img.y && pos.y <= img.y + (img.height || 200)) {
+        onImageDelete(img.id);
+      }
+    });
+
+    files.forEach(f => {
+      if (pos.x >= f.x && pos.x <= f.x + f.width && pos.y >= f.y && pos.y <= f.y + f.height) {
+        onFileDelete(f.id);
+      }
+    });
   };
 
   const getPos = (e: React.PointerEvent): Point => {
@@ -190,7 +206,7 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
         width: 200,
         height: 200
       };
-      setNotes([...notes, newNote]);
+      onNoteAdd(newNote);
     }
   };
 
@@ -206,22 +222,28 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
         const newHeight = Math.max(50, resizeItem.startHeight + dy);
 
         if (resizeItem.type === 'note') {
-            setNotes(prev => prev.map(n => n.id === resizeItem.id ? { ...n, width: newWidth, height: newHeight } : n));
+            const item = notes.find(n => n.id === resizeItem.id);
+            if(item) onNoteUpdate({ ...item, width: newWidth, height: newHeight });
         } else if (resizeItem.type === 'image') {
-            setImages(prev => prev.map(i => i.id === resizeItem.id ? { ...i, width: newWidth, height: newHeight } : i));
+            const item = images.find(i => i.id === resizeItem.id);
+            if(item) onImageUpdate({ ...item, width: newWidth, height: newHeight });
         } else if (resizeItem.type === 'file') {
-            setFiles(prev => prev.map(f => f.id === resizeItem.id ? { ...f, width: newWidth, height: newHeight } : f));
+            const item = files.find(f => f.id === resizeItem.id);
+            if(item) onFileUpdate({ ...item, width: newWidth, height: newHeight });
         }
         return;
     }
 
     if (tool === ToolType.SELECT && dragItem) {
       if (dragItem.type === 'note') {
-        setNotes(prev => prev.map(n => n.id === dragItem.id ? { ...n, x: pos.x - dragItem.offsetX, y: pos.y - dragItem.offsetY } : n));
+        const item = notes.find(n => n.id === dragItem.id);
+        if(item) onNoteUpdate({ ...item, x: pos.x - dragItem.offsetX, y: pos.y - dragItem.offsetY });
       } else if (dragItem.type === 'image') {
-        setImages(prev => prev.map(img => img.id === dragItem.id ? { ...img, x: pos.x - dragItem.offsetX, y: pos.y - dragItem.offsetY } : img));
+        const item = images.find(i => i.id === dragItem.id);
+        if(item) onImageUpdate({ ...item, x: pos.x - dragItem.offsetX, y: pos.y - dragItem.offsetY });
       } else if (dragItem.type === 'file') {
-        setFiles(prev => prev.map(f => f.id === dragItem.id ? { ...f, x: pos.x - dragItem.offsetX, y: pos.y - dragItem.offsetY } : f));
+        const item = files.find(f => f.id === dragItem.id);
+        if(item) onFileUpdate({ ...item, x: pos.x - dragItem.offsetX, y: pos.y - dragItem.offsetY });
       }
       return;
     }
@@ -261,7 +283,7 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
               color: '#1e293b',
               width: 3
             };
-            setPaths(prev => [...prev, newPath]);
+            onPathAdd(newPath);
         }
         
         setCurrentPath([]);
@@ -312,13 +334,14 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
   };
 
   const updateNoteText = (id: string, text: string) => {
-    setNotes(prev => prev.map(n => n.id === id ? { ...n, text } : n));
+    const item = notes.find(n => n.id === id);
+    if(item) onNoteUpdate({ ...item, text });
   };
 
   const deleteItem = (id: string, type: 'note' | 'image' | 'file') => {
-    if (type === 'note') setNotes(prev => prev.filter(n => n.id !== id));
-    if (type === 'image') setImages(prev => prev.filter(i => i.id !== id));
-    if (type === 'file') setFiles(prev => prev.filter(f => f.id !== id));
+    if (type === 'note') onNoteDelete(id);
+    if (type === 'image') onImageDelete(id);
+    if (type === 'file') onFileDelete(id);
   };
 
   const getFileIcon = (fileType: string) => {

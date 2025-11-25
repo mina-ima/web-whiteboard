@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { Whiteboard } from './components/Whiteboard';
@@ -6,9 +5,10 @@ import { Toolbar } from './components/Toolbar';
 import { AiSidebar } from './components/AiSidebar';
 import { LoginScreen } from './components/LoginScreen';
 import { InviteModal } from './components/InviteModal';
-import { ToolType, Path, StickyNote, BoardImage, BoardFile, STICKY_COLORS } from './types';
+import { ToolType, StickyNote, BoardImage, BoardFile, STICKY_COLORS } from './types';
 import html2canvas from 'html2canvas';
-import { UserIcon, ClipboardDocumentIcon } from '@heroicons/react/24/outline';
+import { UserIcon, ClipboardDocumentIcon, SignalIcon, SignalSlashIcon } from '@heroicons/react/24/outline';
+import { useWhiteboardStore } from './hooks/useWhiteboardStore';
 
 interface UserSession {
   userName: string;
@@ -21,12 +21,18 @@ const App: React.FC = () => {
   const [showInvite, setShowInvite] = useState(false);
   
   const [tool, setTool] = useState<ToolType>(ToolType.PEN);
-  const [paths, setPaths] = useState<Path[]>([]);
-  const [notes, setNotes] = useState<StickyNote[]>([]);
-  const [images, setImages] = useState<BoardImage[]>([]);
-  const [files, setFiles] = useState<BoardFile[]>([]);
   const [isAiOpen, setIsAiOpen] = useState(false);
   const appContainerRef = useRef<HTMLDivElement>(null);
+
+  // Hook into Real-time Store
+  // If session is null, it won't connect.
+  const { 
+    paths, notes, images, files, isConnected,
+    addPath, deletePaths, clearBoard,
+    addNote, updateNote, deleteNote,
+    addImage, updateImage, deleteImage,
+    addFile, updateFile, deleteFile
+  } = useWhiteboardStore(session?.roomId || null, session?.passcode || null, session?.userName || '');
 
   const handleLogin = (userName: string, roomId: string, passcode: string, isCreator: boolean) => {
     setSession({ userName, roomId, passcode });
@@ -36,11 +42,8 @@ const App: React.FC = () => {
   };
 
   const handleClear = () => {
-    if (window.confirm('Are you sure you want to clear the board?')) {
-      setPaths([]);
-      setNotes([]);
-      setImages([]);
-      setFiles([]);
+    if (window.confirm('Are you sure you want to clear the board? This will clear it for everyone.')) {
+      clearBoard();
     }
   };
 
@@ -61,7 +64,7 @@ const App: React.FC = () => {
               height: 300, 
               title: file.name
             };
-            setImages([...images, newImage]);
+            addImage(newImage);
         } else {
             // Handle non-image files (docs, excel, pdf)
             const newFile: BoardFile = {
@@ -74,7 +77,7 @@ const App: React.FC = () => {
               width: 220,
               height: 140
             };
-            setFiles([...files, newFile]);
+            addFile(newFile);
         }
         setTool(ToolType.SELECT);
       };
@@ -83,17 +86,18 @@ const App: React.FC = () => {
   };
 
   const handleAddAiNotes = (ideas: string[]) => {
-    // Arrange generated notes in a grid or random scatter near center
-    const newNotes: StickyNote[] = ideas.map((idea, index) => ({
-      id: uuidv4(),
-      x: 150 + (index % 3) * 220,
-      y: 150 + Math.floor(index / 3) * 220,
-      text: idea,
-      color: STICKY_COLORS[index % STICKY_COLORS.length],
-      width: 200,
-      height: 200
-    }));
-    setNotes(prev => [...prev, ...newNotes]);
+    ideas.forEach((idea, index) => {
+      const note: StickyNote = {
+        id: uuidv4(),
+        x: 150 + (index % 3) * 220,
+        y: 150 + Math.floor(index / 3) * 220,
+        text: idea,
+        color: STICKY_COLORS[index % STICKY_COLORS.length],
+        width: 200,
+        height: 200
+      };
+      addNote(note);
+    });
     setTool(ToolType.SELECT);
   };
 
@@ -130,6 +134,11 @@ const App: React.FC = () => {
                 <UserIcon className="w-3 h-3" />
                 <span>{session.userName}</span>
             </div>
+             <div className="w-px h-3 bg-slate-300"></div>
+            <div className={`flex items-center gap-1 text-sm ${isConnected ? 'text-green-600' : 'text-amber-500'}`}>
+                {isConnected ? <SignalIcon className="w-3 h-3" /> : <SignalSlashIcon className="w-3 h-3" />}
+                <span>{isConnected ? 'Live' : 'Connecting...'}</span>
+            </div>
             </div>
         </div>
       </div>
@@ -155,13 +164,22 @@ const App: React.FC = () => {
       <Whiteboard 
         tool={tool}
         paths={paths}
-        setPaths={setPaths}
         notes={notes}
-        setNotes={setNotes}
         images={images}
-        setImages={setImages}
         files={files}
-        setFiles={setFiles}
+        
+        onPathAdd={addPath}
+        onPathsDelete={deletePaths}
+        
+        onNoteAdd={addNote}
+        onNoteUpdate={updateNote}
+        onNoteDelete={deleteNote}
+
+        onImageUpdate={updateImage}
+        onImageDelete={deleteImage}
+
+        onFileUpdate={updateFile}
+        onFileDelete={deleteFile}
       />
 
       <Toolbar 

@@ -14,7 +14,10 @@
     "uuid": "^13.0.0",
     "react-dom": "^19.2.0",
     "react": "^19.2.0",
-    "@heroicons/react": "^2.2.0"
+    "@heroicons/react": "^2.2.0",
+    "yjs": "13.6.10",
+    "y-webrtc": "10.3.0",
+    "simple-peer": "9.11.1"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
