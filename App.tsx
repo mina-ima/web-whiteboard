@@ -7,7 +7,7 @@ import { LoginScreen } from './components/LoginScreen';
 import { InviteModal } from './components/InviteModal';
 import { ToolType, StickyNote, BoardImage, BoardFile, STICKY_COLORS } from './types';
 import html2canvas from 'html2canvas';
-import { UserIcon, ClipboardDocumentIcon, SignalIcon, SignalSlashIcon } from '@heroicons/react/24/outline';
+import { UserIcon, ClipboardDocumentIcon, SignalIcon, SignalSlashIcon, UsersIcon } from '@heroicons/react/24/outline';
 import { useWhiteboardStore } from './hooks/useWhiteboardStore';
 
 interface UserSession {
@@ -25,13 +25,13 @@ const App: React.FC = () => {
   const appContainerRef = useRef<HTMLDivElement>(null);
 
   // Hook into Real-time Store
-  // If session is null, it won't connect.
   const { 
-    paths, notes, images, files, isConnected,
+    paths, notes, images, files, isConnected, peers, remoteUsers,
     addPath, deletePaths, clearBoard,
     addNote, updateNote, deleteNote,
     addImage, updateImage, deleteImage,
-    addFile, updateFile, deleteFile
+    addFile, updateFile, deleteFile,
+    updateCursor
   } = useWhiteboardStore(session?.roomId || null, session?.passcode || null, session?.userName || '');
 
   const handleLogin = (userName: string, roomId: string, passcode: string, isCreator: boolean) => {
@@ -125,20 +125,25 @@ const App: React.FC = () => {
       <div className="absolute top-4 left-4 z-30 pointer-events-none select-none flex items-start gap-4">
         <div>
             <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Gemini SmartBoard</h1>
-            <div className="flex items-center gap-3 mt-1">
-            <p className="text-sm text-slate-500 font-medium bg-white/50 backdrop-blur px-2 py-1 rounded-md border border-slate-100 shadow-sm pointer-events-auto cursor-help" title="Click to view invite info" onClick={() => setShowInvite(true)}>
-                Room: <span className="text-indigo-600">{session.roomId}</span>
-            </p>
-            <div className="w-px h-3 bg-slate-300"></div>
-            <div className="flex items-center gap-1 text-sm text-slate-500">
-                <UserIcon className="w-3 h-3" />
-                <span>{session.userName}</span>
-            </div>
-             <div className="w-px h-3 bg-slate-300"></div>
-            <div className={`flex items-center gap-1 text-sm ${isConnected ? 'text-green-600' : 'text-amber-500'}`}>
-                {isConnected ? <SignalIcon className="w-3 h-3" /> : <SignalSlashIcon className="w-3 h-3" />}
-                <span>{isConnected ? 'Live' : 'Connecting...'}</span>
-            </div>
+            <div className="flex items-center gap-3 mt-1 pointer-events-auto">
+                <button className="text-sm text-slate-500 font-medium bg-white/80 backdrop-blur px-2 py-1 rounded-md border border-slate-200 shadow-sm cursor-copy hover:bg-white transition-colors" title="Copy Invite Info" onClick={() => setShowInvite(true)}>
+                    Room: <span className="text-indigo-600 font-mono">{session.roomId}</span>
+                </button>
+                <div className="w-px h-3 bg-slate-300"></div>
+                <div className="flex items-center gap-1 text-sm text-slate-500 bg-white/50 px-2 py-1 rounded-md">
+                    <UserIcon className="w-3 h-3" />
+                    <span>{session.userName}</span>
+                </div>
+                <div className="w-px h-3 bg-slate-300"></div>
+                <div className={`flex items-center gap-1 text-sm px-2 py-1 rounded-md bg-white/50 ${isConnected ? 'text-green-600' : 'text-amber-500'}`}>
+                    {isConnected ? <SignalIcon className="w-3 h-3" /> : <SignalSlashIcon className="w-3 h-3" />}
+                    <span>{isConnected ? 'Connected' : 'Reconnecting...'}</span>
+                </div>
+                 <div className="w-px h-3 bg-slate-300"></div>
+                 <div className="flex items-center gap-1 text-sm text-slate-600 bg-white/50 px-2 py-1 rounded-md">
+                    <UsersIcon className="w-3 h-3" />
+                    <span>{peers.length + 1} online</span> 
+                </div>
             </div>
         </div>
       </div>
@@ -167,6 +172,7 @@ const App: React.FC = () => {
         notes={notes}
         images={images}
         files={files}
+        remoteUsers={remoteUsers}
         
         onPathAdd={addPath}
         onPathsDelete={deletePaths}
@@ -180,6 +186,8 @@ const App: React.FC = () => {
 
         onFileUpdate={updateFile}
         onFileDelete={deleteFile}
+
+        onCursorMove={updateCursor}
       />
 
       <Toolbar 

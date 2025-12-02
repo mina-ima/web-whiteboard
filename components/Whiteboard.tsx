@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { Path, Point, ToolType, StickyNote, BoardImage, BoardFile, STICKY_COLORS } from '../types';
+import { Path, Point, ToolType, StickyNote, BoardImage, BoardFile, UserAwareness } from '../types';
 import { 
   XMarkIcon, 
   ArrowsPointingOutIcon, 
@@ -10,6 +10,7 @@ import {
   PresentationChartBarIcon,
   ArrowDownTrayIcon
 } from '@heroicons/react/24/outline';
+import { ArrowTopRightOnSquareIcon } from '@heroicons/react/24/solid';
 
 interface WhiteboardProps {
   tool: ToolType;
@@ -17,6 +18,7 @@ interface WhiteboardProps {
   notes: StickyNote[];
   images: BoardImage[];
   files: BoardFile[];
+  remoteUsers: UserAwareness[];
   
   // Sync Handlers
   onPathAdd: (path: Path) => void;
@@ -31,14 +33,17 @@ interface WhiteboardProps {
 
   onFileUpdate: (file: BoardFile) => void;
   onFileDelete: (id: string) => void;
+
+  onCursorMove: (point: Point | null) => void;
 }
 
 export const Whiteboard: React.FC<WhiteboardProps> = ({ 
-  tool, paths, notes, images, files,
+  tool, paths, notes, images, files, remoteUsers,
   onPathAdd, onPathsDelete,
   onNoteAdd, onNoteUpdate, onNoteDelete,
   onImageUpdate, onImageDelete,
-  onFileUpdate, onFileDelete
+  onFileUpdate, onFileDelete,
+  onCursorMove
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -48,7 +53,6 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
   const [resizeItem, setResizeItem] = useState<{ type: 'note' | 'image' | 'file', id: string, startX: number, startY: number, startWidth: number, startHeight: number } | null>(null);
   const [canvasSize, setCanvasSize] = useState<{ w: number, h: number } | null>(null);
 
-  // 1. Handle Resize Robustly
   useEffect(() => {
     const handleResize = () => {
       if (containerRef.current) {
@@ -67,7 +71,6 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // 2. Redraw function
   const redraw = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas || !canvasSize) return;
@@ -120,8 +123,6 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
     }
   }, [canvasSize, redraw]);
 
-
-  // Helper: Geometry for Eraser
   const distToSegment = (p: Point, v: Point, w: Point) => {
      const dist2 = (v: Point, w: Point) => (v.x - w.x) ** 2 + (v.y - w.y) ** 2;
      const l2 = dist2(v, w);
@@ -135,7 +136,6 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
   const eraseAt = (pos: Point) => {
     const ERASER_RADIUS = 20; 
 
-    // Find paths to delete
     const pathsToDelete = paths.filter(path => {
       for (let i = 0; i < path.points.length - 1; i++) {
         if (distToSegment(pos, path.points[i], path.points[i + 1]) < ERASER_RADIUS) {
@@ -149,7 +149,6 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
       onPathsDelete(pathsToDelete);
     }
 
-    // Check items
     notes.forEach(note => {
       if (pos.x >= note.x && pos.x <= note.x + note.width && pos.y >= note.y && pos.y <= note.y + note.height) {
         onNoteDelete(note.id);
@@ -202,7 +201,7 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
         x: pos.x - 75,
         y: pos.y - 75,
         text: '',
-        color: STICKY_COLORS[Math.floor(Math.random() * STICKY_COLORS.length)],
+        color: '#fef3c7', 
         width: 200,
         height: 200
       };
@@ -213,6 +212,9 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
   const handlePointerMove = (e: React.PointerEvent) => {
     e.preventDefault();
     const pos = getPos(e);
+    
+    // Broadcast Cursor Position
+    onCursorMove(pos);
 
     if (resizeItem) {
         const dx = pos.x - resizeItem.startX;
@@ -289,6 +291,11 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
         setCurrentPath([]);
         setIsDrawing(false);
     }
+  };
+
+  const handlePointerLeave = (e: React.PointerEvent) => {
+    handlePointerUp(e);
+    onCursorMove(null); // Clear cursor when leaving board
   };
 
   const handleItemPointerDown = (e: React.PointerEvent, id: string, type: 'note' | 'image' | 'file') => {
@@ -368,7 +375,7 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
-      onPointerLeave={handlePointerUp}
+      onPointerLeave={handlePointerLeave}
       onPointerCancel={handlePointerUp}
     >
       <canvas ref={canvasRef} className="absolute top-0 left-0 w-full h-full z-0 touch-none" />
@@ -390,12 +397,10 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
               </button>
              )}
 
-            {/* Icon Area */}
             <div className="flex-1 w-full flex items-center justify-center bg-gray-50 rounded mb-2">
                 {getFileIcon(file.fileType)}
             </div>
             
-            {/* Filename & Download */}
             <div className="w-full flex items-center justify-between text-xs px-1">
                 <span className="truncate font-medium text-gray-700 max-w-[80%]">{file.fileName}</span>
                 <a 
@@ -495,6 +500,31 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
             </div>
            )}
         </div>
+      ))}
+
+      {/* Render Remote Cursors */}
+      {remoteUsers.map(u => (
+        u.cursor && (
+          <div 
+            key={u.clientId}
+            className="absolute z-50 pointer-events-none transition-all duration-75 flex flex-col items-start"
+            style={{ 
+              left: u.cursor.x, 
+              top: u.cursor.y 
+            }}
+          >
+            <ArrowTopRightOnSquareIcon 
+              className="w-5 h-5 drop-shadow-md -ml-1 -mt-1" 
+              style={{ color: u.user.color, transform: 'rotate(-90deg)' }} 
+            />
+            <span 
+              className="px-2 py-0.5 rounded-md text-xs text-white font-medium shadow-sm whitespace-nowrap mt-1"
+              style={{ backgroundColor: u.user.color }}
+            >
+              {u.user.name}
+            </span>
+          </div>
+        )
       ))}
     </div>
   );

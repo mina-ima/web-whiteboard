@@ -55,6 +55,15 @@ export interface ChatMessage {
   text: string;
 }
 
+export interface UserAwareness {
+  clientId: number;
+  user: {
+    name: string;
+    color: string;
+  };
+  cursor: Point | null;
+}
+
 export type BoardItem = StickyNote | BoardImage | BoardFile;
 
 export const STICKY_COLORS = [
