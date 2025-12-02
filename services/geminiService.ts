@@ -43,7 +43,7 @@ export const analyzeBoard = async (imageData: string): Promise<string> => {
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash-image",
+      model: "gemini-2.5-flash",
       contents: {
         parts: [
           {
