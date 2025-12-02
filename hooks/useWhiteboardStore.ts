@@ -7,7 +7,8 @@ import { Path, StickyNote, BoardImage, BoardFile, UserAwareness } from '../types
 const SIGNALING_SERVERS = [
   'wss://signaling.yjs.dev',
   'wss://y-webrtc-signaling-eu.herokuapp.com',
-  'wss://y-webrtc-signaling-us.herokuapp.com'
+  'wss://y-webrtc-signaling-us.herokuapp.com',
+  'wss://signaling.now.sh' 
 ];
 
 const USER_COLORS = ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#10b981', '#06b6d4', '#3b82f6', '#8b5cf6', '#d946ef', '#f43f5e'];
@@ -30,6 +31,7 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
 
     console.log(`[YJS] Connecting to room: gemini-board-${roomId}`);
 
+    // Create Doc
     const ydoc = new Y.Doc();
     ydocRef.current = ydoc;
 
@@ -40,6 +42,7 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
       filterBcConns: false,
       // Add STUN servers to allow connections across different networks (NAT traversal)
       peerOpts: {
+        poly: false, // Ensure simple-peer uses native WebRTC
         config: {
           iceServers: [
             { urls: 'stun:stun.l.google.com:19302' },
@@ -59,7 +62,12 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
       setIsConnected(event.status === 'connected');
     });
 
+    provider.on('synced', (event: any) => {
+       console.log('[YJS] Synced with peers:', event);
+    });
+
     provider.on('peers', (event: any) => {
+       console.log('[YJS] Peers updated:', event.webrtcConns.keys());
        setPeers(Array.from(event.webrtcConns.keys()));
     });
 
@@ -99,7 +107,9 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
     setFiles(Array.from(yFiles.values()));
 
     // Observe Changes
-    yPaths.observe(() => setPaths(yPaths.toArray()));
+    yPaths.observe(() => {
+        setPaths(yPaths.toArray());
+    });
     yNotes.observe(() => setNotes(Array.from(yNotes.values())));
     yImages.observe(() => setImages(Array.from(yImages.values())));
     yFiles.observe(() => setFiles(Array.from(yFiles.values())));
