@@ -286,9 +286,11 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
     // 5. Handle Drawing (Pen)
     if (isDrawingRef.current && tool === ToolType.PEN) {
       // Coalesced events give higher precision for Pen inputs
-      const events = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
+      // Fix TS Error by casting to any or generic PointerEvent
+      const nativeEvent = e.nativeEvent as any;
+      const events = nativeEvent.getCoalescedEvents ? nativeEvent.getCoalescedEvents() : [e];
       
-      events.forEach(evt => {
+      events.forEach((evt: any) => {
          const rect = containerRef.current!.getBoundingClientRect();
          const pt = {
             x: evt.clientX - rect.left,

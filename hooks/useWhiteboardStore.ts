@@ -53,7 +53,8 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
     awarenessRef.current = provider.awareness;
 
     // --- Connection Status ---
-    provider.on('status', (event: { status: string }) => {
+    // Fix TS error by casting event to any, as definition might mismatch
+    provider.on('status', (event: any) => {
       console.log(`[YJS] Connection status: ${event.status}`);
       setIsConnected(event.status === 'connected');
     });
