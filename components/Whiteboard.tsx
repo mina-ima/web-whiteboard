@@ -70,7 +70,8 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
     };
     
     window.addEventListener('resize', handleResize);
-    handleResize(); // Initial size
+    // Delay slightly to ensure layout is done
+    setTimeout(handleResize, 100);
 
     return () => window.removeEventListener('resize', handleResize);
   }, []);
@@ -204,10 +205,6 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
         containerRef.current.setPointerCapture(e.pointerId);
     }
     
-    // If user clicked a specific resize handle or item, dragItem/resizeItem will be set by their handlers 
-    // BEFORE this bubbles to container if we didn't stop propagation.
-    // However, for items, we usually stop propagation.
-    
     const pos = getPos(e);
 
     if (tool === ToolType.ERASER) {
@@ -322,13 +319,12 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
   };
 
   const handleItemPointerDown = (e: React.PointerEvent, id: string, type: 'note' | 'image' | 'file') => {
-    // Crucial: If in Pen/Eraser mode, items are transparent to events (css pointer-events-none),
-    // so this handler won't fire. The container handler fires instead.
-    // This is only for SELECT mode.
+    // If in PEN/ERASER mode, items are pointer-events-none, so this won't trigger. 
+    // This is purely for SELECT mode.
     if (tool !== ToolType.SELECT) return;
 
-    e.stopPropagation(); // Stop bubbling to container so we don't start drawing/other logic
-    e.currentTarget.setPointerCapture(e.pointerId); // Capture on the item itself
+    e.stopPropagation(); // Stop bubbling to container
+    e.currentTarget.setPointerCapture(e.pointerId);
 
     const pos = getPos(e);
     let itemX = 0, itemY = 0;
@@ -349,7 +345,6 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
   const handleResizePointerDown = (e: React.PointerEvent, id: string, type: 'note' | 'image' | 'file', w: number, h: number) => {
     if (tool !== ToolType.SELECT) return;
     e.stopPropagation();
-    // We capture on container for smooth resizing even if mouse goes outside
     containerRef.current?.setPointerCapture(e.pointerId);
 
     const pos = getPos(e);
@@ -381,9 +376,8 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
      return <DocumentIcon className="w-1/2 h-1/2 text-gray-500" />;
   };
 
-  // Determine pointer events style for items
-  // If NOT Select, items should be ignored so clicks fall through to canvas/container
-  const itemPointerEvents = tool === ToolType.SELECT ? 'pointer-events-auto' : 'pointer-events-none';
+  // When using PEN or ERASER, we disable pointer events on items so we can draw "through" them.
+  const itemPointerEvents = isPenOrEraser ? 'pointer-events-none' : 'pointer-events-auto';
 
   return (
     <div 
@@ -396,10 +390,15 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
       onPointerLeave={handlePointerUp}
       onPointerCancel={handlePointerUp}
     >
-      {/* Canvas is always rendered at Z-0 visually, but logically "above" items for input due to itemPointerEvents */}
+      {/* 
+          CRITICAL FIX: 
+          When drawing (Pen/Eraser), Canvas must be on top (z-50) to capture strokes.
+          When selecting, it goes to back (z-10) to let items receive events.
+      */}
       <canvas 
         ref={canvasRef} 
-        className="absolute top-0 left-0 w-full h-full touch-none z-10"
+        className="absolute top-0 left-0 w-full h-full touch-none"
+        style={{ zIndex: isPenOrEraser ? 50 : 10 }}
       />
 
       {/* Render Files (z-15) */}
@@ -428,7 +427,7 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
                 <a 
                     href={file.data} 
                     download={file.fileName} 
-                    className="p-1 hover:bg-gray-200 rounded text-gray-600 pointer-events-auto"
+                    className={`p-1 hover:bg-gray-200 rounded text-gray-600 ${tool === ToolType.SELECT ? 'pointer-events-auto' : 'pointer-events-none'}`}
                     onPointerDown={(e) => e.stopPropagation()}
                     title="Download"
                 >
@@ -506,13 +505,11 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
             </button>
           )}
           <textarea
-            className="w-full h-full bg-transparent resize-none outline-none text-gray-800 font-medium placeholder-gray-400/70 select-text cursor-text pointer-events-auto"
+            className={`w-full h-full bg-transparent resize-none outline-none text-gray-800 font-medium placeholder-gray-400/70 select-text cursor-text ${itemPointerEvents}`}
             placeholder="Type here..."
             value={note.text}
             onChange={(e) => updateNoteText(note.id, e.target.value)}
             onPointerDown={(e) => e.stopPropagation()} 
-            // Only allow typing/interaction if in SELECT mode, but we added pointer-events-auto above
-            // to allow typing. However, if in PEN mode, the parent div has pointer-events-none, so this is irrelevant.
           />
           {tool === ToolType.SELECT && (
             <div
@@ -525,16 +522,15 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
         </div>
       ))}
 
-      {/* Render Remote Cursors (z-35: Above canvas, below UI) */}
+      {/* Render Remote Cursors (z-60: Above everything) */}
       {remoteUsers.map(u => (
         u.cursor && (
           <div 
             key={u.clientId}
-            className="absolute z-35 pointer-events-none transition-all duration-75 flex flex-col items-start"
+            className="absolute pointer-events-none transition-all duration-75 flex flex-col items-start z-[60]"
             style={{ 
               left: u.cursor.x, 
               top: u.cursor.y,
-              zIndex: 35
             }}
           >
             <ArrowTopRightOnSquareIcon 

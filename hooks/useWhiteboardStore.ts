@@ -43,7 +43,8 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
         config: {
           iceServers: [
             { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:global.stun.twilio.com:3478' }
+            { urls: 'stun:global.stun.twilio.com:3478' },
+            { urls: 'stun:stun.services.mozilla.com' }
           ]
         }
       } as any 
@@ -134,13 +135,16 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
           indexesToDelete.push(i);
         }
       });
+      // Delete in reverse order to preserve indexes
       indexesToDelete.sort((a, b) => b - a).forEach(i => yPaths.delete(i, 1));
     });
   }, []);
 
   const clearBoard = useCallback(() => {
     ydocRef.current?.transact(() => {
-      ydocRef.current?.getArray('paths').delete(0, ydocRef.current?.getArray('paths').length);
+      const yPaths = ydocRef.current?.getArray('paths');
+      if (yPaths) yPaths.delete(0, yPaths.length);
+      
       ydocRef.current?.getMap('notes').clear();
       ydocRef.current?.getMap('images').clear();
       ydocRef.current?.getMap('files').clear();
