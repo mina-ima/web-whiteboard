@@ -54,6 +54,7 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
   const [canvasSize, setCanvasSize] = useState<{ w: number, h: number } | null>(null);
 
   // Helper to determine if we should be writing ON TOP of everything
+  // In Pen/Eraser mode, we force items to be non-interactive so clicks pass through to canvas
   const isPenOrEraser = tool === ToolType.PEN || tool === ToolType.ERASER;
 
   useEffect(() => {
@@ -74,57 +75,69 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const redraw = useCallback(() => {
+  const renderCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas || !canvasSize) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    // Reset transform to clear full buffer
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+    // Scale for High DPI
     const dpr = window.devicePixelRatio || 1;
     ctx.scale(dpr, dpr);
 
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
+    // Draw existing paths
     paths.forEach(path => {
       if (path.points.length < 1) return;
       ctx.beginPath();
       ctx.lineWidth = path.width;
       ctx.strokeStyle = path.color;
       ctx.moveTo(path.points[0].x, path.points[0].y);
-      path.points.forEach((point, index) => {
-        if (index > 0) ctx.lineTo(point.x, point.y);
-      });
+      for (let i = 1; i < path.points.length; i++) {
+        ctx.lineTo(path.points[i].x, path.points[i].y);
+      }
       ctx.stroke();
     });
 
+    // Draw current path being drawn
     if (currentPath.length > 0) {
       ctx.beginPath();
       ctx.lineWidth = 3;
       ctx.strokeStyle = '#1e293b';
       ctx.moveTo(currentPath[0].x, currentPath[0].y);
-      currentPath.forEach((point, index) => {
-        if (index > 0) ctx.lineTo(point.x, point.y);
-      });
+      for (let i = 1; i < currentPath.length; i++) {
+        ctx.lineTo(currentPath[i].x, currentPath[i].y);
+      }
       ctx.stroke();
     }
   }, [paths, currentPath, canvasSize]);
+
+  // Use RequestAnimationFrame for smooth drawing loop
+  useEffect(() => {
+    let animationFrameId: number;
+    const loop = () => {
+      renderCanvas();
+      animationFrameId = requestAnimationFrame(loop);
+    };
+    loop();
+    return () => cancelAnimationFrame(animationFrameId);
+  }, [renderCanvas]);
 
   useEffect(() => {
     if (canvasRef.current && canvasSize && containerRef.current) {
         canvasRef.current.width = canvasSize.w;
         canvasRef.current.height = canvasSize.h;
-        
         const rect = containerRef.current.getBoundingClientRect();
         canvasRef.current.style.width = `${rect.width}px`;
         canvasRef.current.style.height = `${rect.height}px`;
-        
-        redraw();
     }
-  }, [canvasSize, redraw]);
+  }, [canvasSize]);
 
   const distToSegment = (p: Point, v: Point, w: Point) => {
      const dist2 = (v: Point, w: Point) => (v.x - w.x) ** 2 + (v.y - w.y) ** 2;
@@ -139,6 +152,7 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
   const eraseAt = (pos: Point) => {
     const ERASER_RADIUS = 20; 
 
+    // Find paths intersecting eraser
     const pathsToDelete = paths.filter(path => {
       for (let i = 0; i < path.points.length - 1; i++) {
         if (distToSegment(pos, path.points[i], path.points[i + 1]) < ERASER_RADIUS) {
@@ -152,18 +166,17 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
       onPathsDelete(pathsToDelete);
     }
 
+    // Check items
     notes.forEach(note => {
       if (pos.x >= note.x && pos.x <= note.x + note.width && pos.y >= note.y && pos.y <= note.y + note.height) {
         onNoteDelete(note.id);
       }
     });
-
     images.forEach(img => {
       if (pos.x >= img.x && pos.x <= img.x + img.width && pos.y >= img.y && pos.y <= img.y + (img.height || 200)) {
         onImageDelete(img.id);
       }
     });
-
     files.forEach(f => {
       if (pos.x >= f.x && pos.x <= f.x + f.width && pos.y >= f.y && pos.y <= f.y + f.height) {
         onFileDelete(f.id);
@@ -181,25 +194,30 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
     };
   };
 
+  // ------------------------------------------
+  // Interactions
+  // ------------------------------------------
+
   const handlePointerDown = (e: React.PointerEvent) => {
-    // If we are in drawing mode, we want to prevent default behaviors and capture pointer
-    if (e.target === canvasRef.current) {
-      e.preventDefault();
+    // Capture pointer on the CONTAINER so we track it even if mouse goes off-element
+    if (containerRef.current) {
+        containerRef.current.setPointerCapture(e.pointerId);
     }
-
+    
+    // If user clicked a specific resize handle or item, dragItem/resizeItem will be set by their handlers 
+    // BEFORE this bubbles to container if we didn't stop propagation.
+    // However, for items, we usually stop propagation.
+    
     const pos = getPos(e);
-
-    if (dragItem || resizeItem) return;
 
     if (tool === ToolType.ERASER) {
       eraseAt(pos);
-      (e.target as Element).setPointerCapture(e.pointerId);
       setIsDrawing(true); 
     } else if (tool === ToolType.PEN) {
-      (e.target as Element).setPointerCapture(e.pointerId);
       setIsDrawing(true);
       setCurrentPath([pos]);
     } else if (tool === ToolType.NOTE) {
+      // Add note
       const newNote: StickyNote = {
         id: uuidv4(),
         x: pos.x - 75,
@@ -210,6 +228,7 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
         height: 200
       };
       onNoteAdd(newNote);
+      // Switch back to select for UX? Optional.
     }
   };
 
@@ -217,13 +236,13 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
     e.preventDefault();
     const pos = getPos(e);
     
-    // Broadcast Cursor Position
+    // 1. Broadcast Cursor
     onCursorMove(pos);
 
+    // 2. Handle Resize
     if (resizeItem) {
         const dx = pos.x - resizeItem.startX;
         const dy = pos.y - resizeItem.startY;
-        
         const newWidth = Math.max(50, resizeItem.startWidth + dx);
         const newHeight = Math.max(50, resizeItem.startHeight + dy);
 
@@ -240,6 +259,7 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
         return;
     }
 
+    // 3. Handle Drag
     if (tool === ToolType.SELECT && dragItem) {
       if (dragItem.type === 'note') {
         const item = notes.find(n => n.id === dragItem.id);
@@ -254,15 +274,17 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
       return;
     }
 
+    // 4. Handle Eraser
     if (tool === ToolType.ERASER && isDrawing) {
       eraseAt(pos);
       return;
     }
 
-    if (!isDrawing || tool !== ToolType.PEN) return;
-    
-    const events = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
-    setCurrentPath(prev => {
+    // 5. Handle Drawing (Pen)
+    if (isDrawing && tool === ToolType.PEN) {
+      const events = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
+      setCurrentPath(prev => {
+        // Just append new points
         const newPoints = events.map(evt => {
             const rect = containerRef.current!.getBoundingClientRect();
             return {
@@ -271,17 +293,20 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
             };
         });
         return [...prev, ...newPoints];
-    });
+      });
+    }
   };
 
   const handlePointerUp = (e: React.PointerEvent) => {
     e.preventDefault();
+    if (containerRef.current) {
+        containerRef.current.releasePointerCapture(e.pointerId);
+    }
+
     if (dragItem) setDragItem(null);
     if (resizeItem) setResizeItem(null);
 
     if (isDrawing) {
-        (e.target as Element).releasePointerCapture(e.pointerId);
-        
         if (tool === ToolType.PEN && currentPath.length > 0) {
             const newPath: Path = {
               id: uuidv4(),
@@ -291,21 +316,19 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
             };
             onPathAdd(newPath);
         }
-        
         setCurrentPath([]);
         setIsDrawing(false);
     }
   };
 
-  const handlePointerLeave = (e: React.PointerEvent) => {
-    handlePointerUp(e);
-    onCursorMove(null); // Clear cursor when leaving board
-  };
-
   const handleItemPointerDown = (e: React.PointerEvent, id: string, type: 'note' | 'image' | 'file') => {
+    // Crucial: If in Pen/Eraser mode, items are transparent to events (css pointer-events-none),
+    // so this handler won't fire. The container handler fires instead.
+    // This is only for SELECT mode.
     if (tool !== ToolType.SELECT) return;
-    e.stopPropagation(); 
-    e.currentTarget.setPointerCapture(e.pointerId);
+
+    e.stopPropagation(); // Stop bubbling to container so we don't start drawing/other logic
+    e.currentTarget.setPointerCapture(e.pointerId); // Capture on the item itself
 
     const pos = getPos(e);
     let itemX = 0, itemY = 0;
@@ -320,28 +343,17 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
       if (item) { itemX = item.x; itemY = item.y; }
     }
 
-    setDragItem({
-      type,
-      id,
-      offsetX: pos.x - itemX,
-      offsetY: pos.y - itemY
-    });
+    setDragItem({ type, id, offsetX: pos.x - itemX, offsetY: pos.y - itemY });
   };
 
   const handleResizePointerDown = (e: React.PointerEvent, id: string, type: 'note' | 'image' | 'file', w: number, h: number) => {
+    if (tool !== ToolType.SELECT) return;
     e.stopPropagation();
-    e.preventDefault();
+    // We capture on container for smooth resizing even if mouse goes outside
     containerRef.current?.setPointerCapture(e.pointerId);
 
     const pos = getPos(e);
-    setResizeItem({
-        type,
-        id,
-        startX: pos.x,
-        startY: pos.y,
-        startWidth: w,
-        startHeight: h
-    });
+    setResizeItem({ type, id, startX: pos.x, startY: pos.y, startWidth: w, startHeight: h });
   };
 
   const updateNoteText = (id: string, text: string) => {
@@ -369,7 +381,9 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
      return <DocumentIcon className="w-1/2 h-1/2 text-gray-500" />;
   };
 
-  const areItemsInteractable = tool === ToolType.SELECT || tool === ToolType.NOTE || tool === ToolType.IMAGE;
+  // Determine pointer events style for items
+  // If NOT Select, items should be ignored so clicks fall through to canvas/container
+  const itemPointerEvents = tool === ToolType.SELECT ? 'pointer-events-auto' : 'pointer-events-none';
 
   return (
     <div 
@@ -379,24 +393,20 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
-      onPointerLeave={handlePointerLeave}
+      onPointerLeave={handlePointerUp}
       onPointerCancel={handlePointerUp}
     >
-      {/* 
-        Dynamic Z-Index:
-        - When drawing (Pen/Eraser): z-30 (Above items)
-        - When selecting: z-0 (Below items)
-      */}
+      {/* Canvas is always rendered at Z-0 visually, but logically "above" items for input due to itemPointerEvents */}
       <canvas 
         ref={canvasRef} 
-        className={`absolute top-0 left-0 w-full h-full touch-none ${isPenOrEraser ? 'z-30' : 'z-0'}`} 
+        className="absolute top-0 left-0 w-full h-full touch-none z-10"
       />
 
       {/* Render Files (z-15) */}
       {files.map(file => (
         <div
             key={file.id}
-            className={`absolute border border-gray-200 bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow group touch-none flex flex-col items-center justify-center p-2 ${areItemsInteractable ? 'pointer-events-auto' : 'pointer-events-none'}`}
+            className={`absolute border border-gray-200 bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow group touch-none flex flex-col items-center justify-center p-2 ${itemPointerEvents}`}
             style={{ left: file.x, top: file.y, width: file.width, height: file.height, zIndex: 15 }}
             onPointerDown={(e) => handleItemPointerDown(e, file.id, 'file')}
         >
@@ -441,7 +451,7 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
       {images.map(img => (
         <div
           key={img.id}
-          className={`absolute border border-transparent hover:border-blue-200 transition-colors group touch-none ${areItemsInteractable ? 'pointer-events-auto' : 'pointer-events-none'}`}
+          className={`absolute border border-transparent hover:border-blue-200 transition-colors group touch-none ${itemPointerEvents}`}
           style={{ left: img.x, top: img.y, width: img.width, height: img.height, zIndex: 10 }}
           onPointerDown={(e) => handleItemPointerDown(e, img.id, 'image')}
         >
@@ -475,7 +485,7 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
       {notes.map(note => (
         <div
           key={note.id}
-          className={`absolute shadow-lg flex flex-col p-4 group touch-none ${areItemsInteractable ? 'pointer-events-auto' : 'pointer-events-none'}`}
+          className={`absolute shadow-lg flex flex-col p-4 group touch-none ${itemPointerEvents}`}
           style={{
             left: note.x,
             top: note.y,
@@ -496,12 +506,13 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
             </button>
           )}
           <textarea
-            className="w-full h-full bg-transparent resize-none outline-none text-gray-800 font-medium placeholder-gray-400/70 select-text cursor-text"
+            className="w-full h-full bg-transparent resize-none outline-none text-gray-800 font-medium placeholder-gray-400/70 select-text cursor-text pointer-events-auto"
             placeholder="Type here..."
             value={note.text}
             onChange={(e) => updateNoteText(note.id, e.target.value)}
             onPointerDown={(e) => e.stopPropagation()} 
-            readOnly={!areItemsInteractable}
+            // Only allow typing/interaction if in SELECT mode, but we added pointer-events-auto above
+            // to allow typing. However, if in PEN mode, the parent div has pointer-events-none, so this is irrelevant.
           />
           {tool === ToolType.SELECT && (
             <div

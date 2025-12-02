@@ -11,36 +11,21 @@
         font-family: 'Inter', sans-serif;
         overflow: hidden; /* Prevent scrolling on mobile */
         touch-action: none; /* Disable browser handling of gestures */
+        overscroll-behavior: none;
       }
       .dot-grid {
         background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
         background-size: 20px 20px;
       }
     </style>
-    <!-- Polyfills for simple-peer/y-webrtc -->
     <script>
-      // Initialize globals for libraries that expect Node.js environment
+      // Polyfills for Node.js environments required by simple-peer/y-webrtc
       window.global = window;
-      
-      // Safely setup process env without overwriting existing keys (like API_KEY)
-      if (typeof window.process === 'undefined') {
-        window.process = { env: {} };
-      }
-      if (typeof window.process.env === 'undefined') {
-        window.process.env = {};
-      }
-      // Ensure NODE_ENV is set
-      window.process.env.NODE_ENV = 'production';
-      
-      // Polyfill nextTick
-      if (!window.process.nextTick) {
-        window.process.nextTick = function(fn) { setTimeout(fn, 0); };
-      }
-      
-      // Polyfill version
-      if (!window.process.version) {
-        window.process.version = '';
-      }
+      window.process = {
+        env: { DEBUG: undefined },
+        version: '',
+        nextTick: function(fn) { setTimeout(fn, 0); }
+      };
     </script>
   <script type="importmap">
 {
@@ -54,8 +39,9 @@
     "react/": "https://aistudiocdn.com/react@^19.2.0/",
     "@heroicons/react/": "https://aistudiocdn.com/@heroicons/react@^2.2.0/",
     "buffer": "https://esm.sh/buffer@6.0.3",
-    "yjs": "https://esm.sh/yjs@13.6.10",
-    "y-webrtc": "https://esm.sh/y-webrtc@10.3.0?external=yjs"
+    "yjs": "https://esm.sh/yjs@13.6.14",
+    "y-webrtc": "https://esm.sh/y-webrtc@10.3.0?deps=yjs@13.6.14",
+    "simple-peer": "https://esm.sh/simple-peer@9.11.1"
   }
 }
 </script>
