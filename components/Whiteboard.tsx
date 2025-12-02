@@ -288,7 +288,7 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
       // Coalesced events give higher precision for Pen inputs
       // Fix TS Error by casting to any or generic PointerEvent
       const nativeEvent = e.nativeEvent as any;
-      const events = nativeEvent.getCoalescedEvents ? nativeEvent.getCoalescedEvents() : [e];
+      const events = nativeEvent?.getCoalescedEvents ? nativeEvent.getCoalescedEvents() : [e];
       
       events.forEach((evt: any) => {
          const rect = containerRef.current!.getBoundingClientRect();

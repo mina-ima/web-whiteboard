@@ -8,7 +8,7 @@ export default defineConfig({
     // Determine API_KEY from process.env for build time or runtime
     'process.env.API_KEY': JSON.stringify(process.env.API_KEY),
     'global': 'window',
-    'process': {}, // Polyfill for simple-peer which checks for process
+    // 'process': {}, // REMOVED: This breaks simple-peer in browser
   },
   resolve: {
     alias: {
