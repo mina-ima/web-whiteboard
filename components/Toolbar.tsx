@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { ToolType } from '../types';
 import { 
@@ -36,7 +35,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     }`;
 
   return (
-    <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 flex items-center gap-3 p-2 bg-white/90 backdrop-blur-md rounded-2xl shadow-2xl border border-gray-200 z-50">
+    <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 flex items-center gap-3 p-2 bg-white/90 backdrop-blur-md rounded-2xl shadow-2xl border border-gray-200 z-[60]">
       <button 
         onClick={() => setTool(ToolType.SELECT)} 
         className={buttonClass(ToolType.SELECT)}

@@ -53,6 +53,9 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
   const [resizeItem, setResizeItem] = useState<{ type: 'note' | 'image' | 'file', id: string, startX: number, startY: number, startWidth: number, startHeight: number } | null>(null);
   const [canvasSize, setCanvasSize] = useState<{ w: number, h: number } | null>(null);
 
+  // Helper to determine if we should be writing ON TOP of everything
+  const isPenOrEraser = tool === ToolType.PEN || tool === ToolType.ERASER;
+
   useEffect(() => {
     const handleResize = () => {
       if (containerRef.current) {
@@ -179,6 +182,7 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
   };
 
   const handlePointerDown = (e: React.PointerEvent) => {
+    // If we are in drawing mode, we want to prevent default behaviors and capture pointer
     if (e.target === canvasRef.current) {
       e.preventDefault();
     }
@@ -378,9 +382,17 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
       onPointerLeave={handlePointerLeave}
       onPointerCancel={handlePointerUp}
     >
-      <canvas ref={canvasRef} className="absolute top-0 left-0 w-full h-full z-0 touch-none" />
+      {/* 
+        Dynamic Z-Index:
+        - When drawing (Pen/Eraser): z-30 (Above items)
+        - When selecting: z-0 (Below items)
+      */}
+      <canvas 
+        ref={canvasRef} 
+        className={`absolute top-0 left-0 w-full h-full touch-none ${isPenOrEraser ? 'z-30' : 'z-0'}`} 
+      />
 
-      {/* Render Files */}
+      {/* Render Files (z-15) */}
       {files.map(file => (
         <div
             key={file.id}
@@ -425,7 +437,7 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
         </div>
       ))}
 
-      {/* Render Images */}
+      {/* Render Images (z-10) */}
       {images.map(img => (
         <div
           key={img.id}
@@ -459,7 +471,7 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
         </div>
       ))}
 
-      {/* Render Notes */}
+      {/* Render Notes (z-20) */}
       {notes.map(note => (
         <div
           key={note.id}
@@ -502,15 +514,16 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
         </div>
       ))}
 
-      {/* Render Remote Cursors */}
+      {/* Render Remote Cursors (z-35: Above canvas, below UI) */}
       {remoteUsers.map(u => (
         u.cursor && (
           <div 
             key={u.clientId}
-            className="absolute z-50 pointer-events-none transition-all duration-75 flex flex-col items-start"
+            className="absolute z-35 pointer-events-none transition-all duration-75 flex flex-col items-start"
             style={{ 
               left: u.cursor.x, 
-              top: u.cursor.y 
+              top: u.cursor.y,
+              zIndex: 35
             }}
           >
             <ArrowTopRightOnSquareIcon 

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { XMarkIcon, SparklesIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import { generateBrainstormingIdeas, analyzeBoard } from '../services/geminiService';

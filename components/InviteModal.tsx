@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { XMarkIcon, ClipboardDocumentCheckIcon, ClipboardDocumentIcon } from '@heroicons/react/24/outline';
 
@@ -19,7 +18,7 @@ export const InviteModal: React.FC<InviteModalProps> = ({ roomId, passcode, onCl
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/20 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/20 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 relative border border-gray-100">
         <button 
           onClick={onClose}

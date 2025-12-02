@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { SparklesIcon, LockClosedIcon, UserIcon, HashtagIcon, PlusCircleIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline';
 
@@ -49,7 +48,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onJoin }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-50 flex items-center justify-center p-4 z-50 dot-grid">
+    <div className="fixed inset-0 bg-slate-50 flex items-center justify-center p-4 z-[70] dot-grid">
       <div className="max-w-md w-full bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
         <div className="bg-indigo-600 p-6 text-center">
           <div className="mx-auto bg-white/20 w-12 h-12 rounded-xl flex items-center justify-center mb-3 backdrop-blur-sm">

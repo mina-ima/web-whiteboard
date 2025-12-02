@@ -33,12 +33,20 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
     const ydoc = new Y.Doc();
     ydocRef.current = ydoc;
 
-    // NOTE: Removed password option to improve connection reliability on public signaling servers.
-    // In a production app with a custom signaling server, you should re-enable auth.
+    // Connect to WebRTC
     const provider = new WebrtcProvider(`gemini-board-${roomId}`, ydoc, {
       signaling: SIGNALING_SERVERS,
       maxConns: 20 + Math.floor(Math.random() * 15),
-      filterBcConns: false, 
+      filterBcConns: false,
+      // Add STUN servers to allow connections across different networks (NAT traversal)
+      peerOpts: {
+        config: {
+          iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:global.stun.twilio.com:3478' }
+          ]
+        }
+      } as any 
     });
     providerRef.current = provider;
     awarenessRef.current = provider.awareness;
