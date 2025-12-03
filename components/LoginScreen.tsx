@@ -38,11 +38,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onJoin }) => {
       // In a real app, you would send this to the server to register the room and password.
       onJoin(userName, newRoomId, createPasscode, true);
     } else {
-      if (!joinRoomId.trim() || !joinPasscode.trim()) {
-        setError('Room ID and Password are required to join.');
+      if (!joinRoomId.trim()) {
+        setError('Room ID is required.');
         return;
       }
-      // Basic validation to ensure they are entering just the number (though we accept strings)
+      // Pass the raw input. The store adds the prefix internally.
       onJoin(userName, joinRoomId.trim(), joinPasscode, false);
     }
   };
@@ -176,4 +176,4 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onJoin }) => {
       </div>
     </div>
   );
-};
+}

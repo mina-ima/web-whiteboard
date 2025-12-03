@@ -3,12 +3,8 @@ import * as Y from 'yjs';
 import { WebrtcProvider } from 'y-webrtc';
 import { Path, StickyNote, BoardImage, BoardFile, UserAwareness } from '../types';
 
-// Use multiple public signaling servers to increase connectivity chances
-const SIGNALING_SERVERS = [
-  'wss://demos.yjs.dev',
-  'wss://y-webrtc-signaling-eu.herokuapp.com', 
-  'wss://y-webrtc-signaling-us.herokuapp.com'
-];
+// Use the main Yjs signaling server for best reliability
+const SIGNALING_SERVERS = ['wss://signaling.yjs.dev'];
 
 const USER_COLORS = ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#10b981', '#06b6d4', '#3b82f6', '#8b5cf6', '#d946ef', '#f43f5e'];
 
@@ -34,8 +30,9 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
       ydocRef.current?.destroy();
     }
 
-    // Create a unique internal room name to avoid collisions on public servers
-    const internalRoomName = `gemini-sb-prod-v1-${roomId}`;
+    // Create a unique internal room name with a version prefix to ensure clean state
+    // We use a fixed version string so all users of this app version connect to the same logical rooms
+    const internalRoomName = `gemini-smartboard-v3-${roomId}`;
     console.log(`[YJS] Connecting to room: ${internalRoomName}`);
 
     // Create Doc
@@ -43,12 +40,10 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
     ydocRef.current = ydoc;
 
     // Connect to WebRTC
-    // Note: Passcode is not natively supported by y-webrtc in this simple setup without a custom signaling server.
-    // We rely on the room name (random numeric ID) for security in this demo.
     const provider = new WebrtcProvider(internalRoomName, ydoc, {
       signaling: SIGNALING_SERVERS,
-      maxConns: 20 + Math.floor(Math.random() * 15),
-      filterBcConns: false,
+      maxConns: 30, // Increase max connections
+      filterBcConns: false, // Allow BroadcastChannel (same tab/browser syncing)
       peerOpts: {
         poly: false,
         config: {
