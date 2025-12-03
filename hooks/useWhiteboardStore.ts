@@ -3,10 +3,11 @@ import * as Y from 'yjs';
 import { WebrtcProvider } from 'y-webrtc';
 import { Path, StickyNote, BoardImage, BoardFile, UserAwareness } from '../types';
 
-// Use the main public signaling server.
-// Using multiple servers can sometimes cause "split-brain" where users connect to different servers and don't see each other.
+// Multiple signaling servers to ensure connectivity
 const SIGNALING_SERVERS = [
-  'wss://signaling.yjs.dev'
+  'wss://signaling.yjs.dev',
+  'wss://y-webrtc-signaling-eu.herokuapp.com',
+  'wss://y-webrtc-signaling-us.herokuapp.com'
 ];
 
 const USER_COLORS = ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#10b981', '#06b6d4', '#3b82f6', '#8b5cf6', '#d946ef', '#f43f5e'];
@@ -34,8 +35,8 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
     }
 
     // Create a unique internal room name based on the numeric ID.
-    // Updated version prefix 'v9' to ensure we are in a fresh room space.
-    const internalRoomName = `gemini-sb-v9-${roomId}`;
+    // Updated version prefix 'v10' to ensure fresh connection space
+    const internalRoomName = `gemini-sb-v10-${roomId}`;
     console.log(`[YJS] Connecting to room: ${internalRoomName}`);
 
     // Create Doc
@@ -43,8 +44,6 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
     ydocRef.current = ydoc;
 
     // Connect to WebRTC
-    // The 'password' option enables encryption. 
-    // Users with different passwords will not be able to decrypt each other's updates (sync will not happen).
     const provider = new WebrtcProvider(internalRoomName, ydoc, {
       signaling: SIGNALING_SERVERS,
       password: passcode || null,
@@ -153,7 +152,6 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
           indexesToDelete.push(i);
         }
       });
-      // Delete in reverse order
       indexesToDelete.sort((a, b) => b - a).forEach(i => yPaths.delete(i, 1));
     });
   }, []);

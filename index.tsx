@@ -1,16 +1,4 @@
-import { Buffer } from 'buffer';
-
-declare global {
-  interface Window {
-    Buffer: typeof Buffer;
-  }
-}
-
-// Polyfill Buffer globally for simple-peer
-if (typeof window !== 'undefined') {
-  window.Buffer = window.Buffer || Buffer;
-}
-
+import './polyfills'; // Must be the very first import
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
