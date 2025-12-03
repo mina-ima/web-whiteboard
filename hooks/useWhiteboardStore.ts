@@ -3,11 +3,10 @@ import * as Y from 'yjs';
 import { WebrtcProvider } from 'y-webrtc';
 import { Path, StickyNote, BoardImage, BoardFile, UserAwareness } from '../types';
 
-// Use multiple public signaling servers for redundancy.
+// Use the main public signaling server.
+// Using multiple servers can sometimes cause "split-brain" where users connect to different servers and don't see each other.
 const SIGNALING_SERVERS = [
-  'wss://signaling.yjs.dev',
-  'wss://y-webrtc-signaling-eu.herokuapp.com',
-  'wss://y-webrtc-signaling-us.herokuapp.com'
+  'wss://signaling.yjs.dev'
 ];
 
 const USER_COLORS = ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#10b981', '#06b6d4', '#3b82f6', '#8b5cf6', '#d946ef', '#f43f5e'];
@@ -34,9 +33,9 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
       ydocRef.current?.destroy();
     }
 
-    // Create a unique internal room name.
-    // Updated to v7 to ensure a clean slate.
-    const internalRoomName = `gemini-sb-v7-${roomId}`;
+    // Create a unique internal room name based on the numeric ID.
+    // Updated version prefix 'v9' to ensure we are in a fresh room space.
+    const internalRoomName = `gemini-sb-v9-${roomId}`;
     console.log(`[YJS] Connecting to room: ${internalRoomName}`);
 
     // Create Doc
@@ -44,10 +43,12 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
     ydocRef.current = ydoc;
 
     // Connect to WebRTC
-    // Note: We deliberately avoid filtering broadcast connections to ensure simpler P2P finding
+    // The 'password' option enables encryption. 
+    // Users with different passwords will not be able to decrypt each other's updates (sync will not happen).
     const provider = new WebrtcProvider(internalRoomName, ydoc, {
       signaling: SIGNALING_SERVERS,
-      maxConns: 20 + Math.floor(Math.random() * 5), // Slight random variation to prevent lockstep limits
+      password: passcode || null,
+      maxConns: 20 + Math.floor(Math.random() * 5),
       filterBcConns: false, 
       peerOpts: {
         poly: false,
@@ -69,7 +70,6 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
     });
 
     provider.on('peers', (event: any) => {
-       // webrtcConns is a Map of connection objects
        const connectedPeers = Array.from(event.webrtcConns.keys()) as string[];
        console.log('[YJS] Peers updated:', connectedPeers.length, connectedPeers);
        setPeers(connectedPeers);
@@ -126,7 +126,7 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
       provider.destroy();
       ydoc.destroy();
     };
-  }, [roomId, userName]); 
+  }, [roomId, passcode, userName]); 
 
   // --- Broadcast Cursor ---
   const updateCursor = useCallback((point: {x: number, y: number} | null) => {
