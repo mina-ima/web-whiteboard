@@ -7,7 +7,7 @@ import { LoginScreen } from './components/LoginScreen';
 import { InviteModal } from './components/InviteModal';
 import { ToolType, StickyNote, BoardImage, BoardFile, STICKY_COLORS } from './types';
 import html2canvas from 'html2canvas';
-import { UserIcon, ClipboardDocumentIcon, SignalIcon, SignalSlashIcon, UsersIcon } from '@heroicons/react/24/outline';
+import { UserIcon, ClipboardDocumentIcon, SignalIcon, SignalSlashIcon, UsersIcon, ShieldCheckIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import { useWhiteboardStore } from './hooks/useWhiteboardStore';
 
 interface UserSession {
@@ -20,6 +20,7 @@ const App: React.FC = () => {
   const [session, setSession] = useState<UserSession | null>(null);
   const [showInvite, setShowInvite] = useState(false);
   const [loginError, setLoginError] = useState<string>('');
+  const [isVerifying, setIsVerifying] = useState(false);
   
   const [tool, setTool] = useState<ToolType>(ToolType.PEN);
   const [isAiOpen, setIsAiOpen] = useState(false);
@@ -39,15 +40,40 @@ const App: React.FC = () => {
   useEffect(() => {
     if (connectionError && session) {
         setSession(null); // Logout
+        setIsVerifying(false);
         setLoginError(connectionError);
     }
   }, [connectionError, session]);
 
+  // Handle Verification Success
+  useEffect(() => {
+    if (session && isVerifying) {
+        // If we connect and stay connected without error for a moment, or if we are the creator/alone
+        // Logic: 
+        // 1. If we have peers and remoteUsers > 0, we matched passwords.
+        // 2. If we have no peers (new room), we are good.
+        // 3. If we have peers but no remoteUsers, the hook will throw connectionError after delay.
+        
+        // We simply wait for the hook to NOT throw an error. 
+        // But to give visual feedback, we'll wait for 'isConnected' to be true.
+        if (isConnected) {
+            // Give a small buffer for the password check heuristic to fire if needed
+            const timer = setTimeout(() => {
+                setIsVerifying(false);
+            }, 1000);
+            return () => clearTimeout(timer);
+        }
+    }
+  }, [session, isVerifying, isConnected]);
+
   const handleLogin = (userName: string, roomId: string, passcode: string, isCreator: boolean) => {
     setLoginError('');
     setSession({ userName, roomId, passcode });
+    setIsVerifying(true); // Start verification
     if (isCreator) {
         setShowInvite(true);
+        // Creators don't need to verify against others initially
+        setIsVerifying(false);
     }
   };
 
@@ -129,6 +155,26 @@ const App: React.FC = () => {
     return <LoginScreen onJoin={handleLogin} initialError={loginError} />;
   }
 
+  // Verification Loading Screen
+  if (isVerifying) {
+      return (
+          <div className="w-screen h-screen flex flex-col items-center justify-center bg-slate-50 dot-grid">
+              <div className="bg-white p-8 rounded-2xl shadow-xl flex flex-col items-center max-w-sm w-full border border-gray-100 animate-in fade-in zoom-in-95">
+                  <div className="w-16 h-16 bg-indigo-50 rounded-full flex items-center justify-center mb-4 text-indigo-600">
+                      <ArrowPathIcon className="w-8 h-8 animate-spin" />
+                  </div>
+                  <h2 className="text-xl font-bold text-gray-800 mb-2">Connecting to Board...</h2>
+                  <p className="text-sm text-gray-500 text-center mb-6">
+                      Verifying room ID and password credentials.
+                  </p>
+                  <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+                      <div className="h-full bg-indigo-600 animate-pulse w-2/3 rounded-full"></div>
+                  </div>
+              </div>
+          </div>
+      );
+  }
+
   return (
     <div className="w-screen h-screen flex flex-col overflow-hidden relative" ref={appContainerRef}>
       {/* Header / Info */}
@@ -154,6 +200,12 @@ const App: React.FC = () => {
                     <UsersIcon className="w-3 h-3" />
                     <span>{peers.length + 1} online</span> 
                 </div>
+                {session.passcode && (
+                     <div className="flex items-center gap-1 text-xs text-indigo-600 bg-indigo-50 px-2 py-1 rounded-md border border-indigo-100 ml-2">
+                        <ShieldCheckIcon className="w-3 h-3" />
+                        <span>Encrypted</span>
+                    </div>
+                )}
             </div>
         </div>
       </div>

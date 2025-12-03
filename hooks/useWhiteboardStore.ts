@@ -3,11 +3,9 @@ import * as Y from 'yjs';
 import { WebrtcProvider } from 'y-webrtc';
 import { Path, StickyNote, BoardImage, BoardFile, UserAwareness } from '../types';
 
-// Multiple signaling servers to ensure connectivity
+// Use a single reliable server to prevent Split Brain
 const SIGNALING_SERVERS = [
-  'wss://signaling.yjs.dev',
-  'wss://y-webrtc-signaling-eu.herokuapp.com',
-  'wss://y-webrtc-signaling-us.herokuapp.com'
+  'wss://signaling.yjs.dev'
 ];
 
 const USER_COLORS = ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#10b981', '#06b6d4', '#3b82f6', '#8b5cf6', '#d946ef', '#f43f5e'];
@@ -31,6 +29,7 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
 
     // Reset error
     setConnectionError(null);
+    setIsConnected(false);
 
     // Cleanup previous
     if (providerRef.current) {
@@ -38,7 +37,8 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
       ydocRef.current?.destroy();
     }
 
-    const internalRoomName = `gemini-sb-v10-${roomId}`;
+    // Use a clean room ID namespace
+    const internalRoomName = `gemini-sb-v12-${roomId}`;
     console.log(`[YJS] Connecting to room: ${internalRoomName}`);
 
     const ydoc = new Y.Doc();
@@ -46,7 +46,7 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
 
     const provider = new WebrtcProvider(internalRoomName, ydoc, {
       signaling: SIGNALING_SERVERS,
-      password: passcode || null,
+      password: passcode || null, // If passcode is provided, it encrypts the room
       maxConns: 20 + Math.floor(Math.random() * 5),
       filterBcConns: false, 
       peerOpts: {
@@ -117,23 +117,30 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
     yFiles.observe(() => setFiles(Array.from(yFiles.values())));
 
     // --- Heuristic Password Check ---
-    // If we have connected peers but cannot decrypt their awareness (remoteUsers remains empty)
-    // it likely means the password is wrong.
+    // If we have connected peers (WebRTC level) but cannot see their awareness state (Yjs level)
+    // it implies encryption mismatch (Wrong Password).
+    // Note: This heuristic works best when there is at least one other person in the room.
+    // If you are alone, you can't verify the password against anyone.
     const checkInterval = setInterval(() => {
-        const hasPeers = provider.room && (provider.room as any).peers.size > 0;
-        const hasAwareness = provider.awareness.getStates().size > 1; // 1 is self
+        if (!providerRef.current) return;
         
-        // If we are connected to peers for a while but see no one (and we are not the creator alone)
-        // This is a guess. If users enter a populated room with wrong password.
-        if (hasPeers && !hasAwareness) {
-            // We give it some time, but if this persists, it's likely a password error.
-            // However, distinguishing "Empty Room" from "Wrong Password" is hard if we are alone.
-            // But if 'peers' (WebRTC connections) exist, we are NOT alone.
-            // So Peers > 0 AND Awareness == 1 means encryption failed.
-            console.warn("Peers detected but no awareness data. Likely wrong password.");
-            setConnectionError("Incorrect password. Unable to join secure session.");
+        // Check raw WebRTC connections
+        // Accessing private property 'room' to check peers is a hack but necessary for diagnosing y-webrtc state
+        const hasPeers = (providerRef.current.room as any)?.peers?.size > 0;
+        
+        // Check Decrypted Awareness
+        // If we decrypted successfully, we should see other users (if they are there)
+        const awarenessStates = providerRef.current.awareness.getStates();
+        const hasDecryptedAwareness = awarenessStates.size > 1; // >1 because 1 is ourselves
+        
+        // Diagnosis
+        if (hasPeers && !hasDecryptedAwareness) {
+            // We are connected to people, but can't read their data.
+            // This is the classic signature of "Wrong Password" in y-webrtc.
+            console.warn("[Security] Peers detected but encryption failed. Passwords do not match.");
+            setConnectionError("Incorrect password. Unable to decrypt room data.");
         }
-    }, 4000); 
+    }, 2000); 
 
     return () => {
       clearInterval(checkInterval);
