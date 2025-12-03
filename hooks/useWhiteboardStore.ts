@@ -101,42 +101,31 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
     });
 
     // --- Data Sync ---
-    const yPaths = ydoc.getArray<Path>('paths');
-    const yNotes = ydoc.getMap<StickyNote>('notes');
-    const yImages = ydoc.getMap<BoardImage>('images');
-    const yFiles = ydoc.getMap<BoardFile>('files');
+    // Note: removed generic types <Path> etc to avoid TS errors in strict mode
+    const yPaths = ydoc.getArray('paths');
+    const yNotes = ydoc.getMap('notes');
+    const yImages = ydoc.getMap('images');
+    const yFiles = ydoc.getMap('files');
 
-    setPaths(yPaths.toArray());
-    setNotes(Array.from(yNotes.values()));
-    setImages(Array.from(yImages.values()));
-    setFiles(Array.from(yFiles.values()));
+    setPaths(yPaths.toArray() as Path[]);
+    setNotes(Array.from(yNotes.values()) as StickyNote[]);
+    setImages(Array.from(yImages.values()) as BoardImage[]);
+    setFiles(Array.from(yFiles.values()) as BoardFile[]);
 
-    yPaths.observe(() => setPaths(yPaths.toArray()));
-    yNotes.observe(() => setNotes(Array.from(yNotes.values())));
-    yImages.observe(() => setImages(Array.from(yImages.values())));
-    yFiles.observe(() => setFiles(Array.from(yFiles.values())));
+    yPaths.observe(() => setPaths(yPaths.toArray() as Path[]));
+    yNotes.observe(() => setNotes(Array.from(yNotes.values()) as StickyNote[]));
+    yImages.observe(() => setImages(Array.from(yImages.values()) as BoardImage[]));
+    yFiles.observe(() => setFiles(Array.from(yFiles.values()) as BoardFile[]));
 
     // --- Heuristic Password Check ---
-    // If we have connected peers (WebRTC level) but cannot see their awareness state (Yjs level)
-    // it implies encryption mismatch (Wrong Password).
-    // Note: This heuristic works best when there is at least one other person in the room.
-    // If you are alone, you can't verify the password against anyone.
     const checkInterval = setInterval(() => {
         if (!providerRef.current) return;
         
-        // Check raw WebRTC connections
-        // Accessing private property 'room' to check peers is a hack but necessary for diagnosing y-webrtc state
         const hasPeers = (providerRef.current.room as any)?.peers?.size > 0;
-        
-        // Check Decrypted Awareness
-        // If we decrypted successfully, we should see other users (if they are there)
         const awarenessStates = providerRef.current.awareness.getStates();
         const hasDecryptedAwareness = awarenessStates.size > 1; // >1 because 1 is ourselves
         
-        // Diagnosis
         if (hasPeers && !hasDecryptedAwareness) {
-            // We are connected to people, but can't read their data.
-            // This is the classic signature of "Wrong Password" in y-webrtc.
             console.warn("[Security] Peers detected but encryption failed. Passwords do not match.");
             setConnectionError("Incorrect password. Unable to decrypt room data.");
         }
@@ -157,38 +146,39 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
   }, []);
 
   // Mutation Helpers
-  const addPath = useCallback((path: Path) => ydocRef.current?.getArray<Path>('paths').push([path]), []);
+  const addPath = useCallback((path: Path) => ydocRef.current?.getArray('paths').push([path]), []);
   const deletePaths = useCallback((pathIds: string[]) => {
-    const yPaths = ydocRef.current?.getArray<Path>('paths');
+    const yPaths = ydocRef.current?.getArray('paths');
     if (!yPaths) return;
     ydocRef.current?.transact(() => {
-      const current = yPaths.toArray();
+      const current = yPaths.toArray() as any[];
       const indexesToDelete: number[] = [];
-      current.forEach((p, i) => { if (pathIds.includes(p.id)) indexesToDelete.push(i); });
+      current.forEach((p: any, i: number) => { if (pathIds.includes(p.id)) indexesToDelete.push(i); });
       indexesToDelete.sort((a, b) => b - a).forEach(i => yPaths.delete(i, 1));
     });
   }, []);
 
   const clearBoard = useCallback(() => {
     ydocRef.current?.transact(() => {
-      ydocRef.current?.getArray('paths').delete(0, ydocRef.current?.getArray('paths').length);
+      const p = ydocRef.current?.getArray('paths');
+      if (p) p.delete(0, p.length);
       ydocRef.current?.getMap('notes').clear();
       ydocRef.current?.getMap('images').clear();
       ydocRef.current?.getMap('files').clear();
     });
   }, []);
 
-  const addNote = useCallback((note: StickyNote) => ydocRef.current?.getMap<StickyNote>('notes').set(note.id, note), []);
-  const updateNote = useCallback((note: StickyNote) => ydocRef.current?.getMap<StickyNote>('notes').set(note.id, note), []);
-  const deleteNote = useCallback((id: string) => ydocRef.current?.getMap<StickyNote>('notes').delete(id), []);
+  const addNote = useCallback((note: StickyNote) => ydocRef.current?.getMap('notes').set(note.id, note), []);
+  const updateNote = useCallback((note: StickyNote) => ydocRef.current?.getMap('notes').set(note.id, note), []);
+  const deleteNote = useCallback((id: string) => ydocRef.current?.getMap('notes').delete(id), []);
 
-  const addImage = useCallback((img: BoardImage) => ydocRef.current?.getMap<BoardImage>('images').set(img.id, img), []);
-  const updateImage = useCallback((img: BoardImage) => ydocRef.current?.getMap<BoardImage>('images').set(img.id, img), []);
-  const deleteImage = useCallback((id: string) => ydocRef.current?.getMap<BoardImage>('images').delete(id), []);
+  const addImage = useCallback((img: BoardImage) => ydocRef.current?.getMap('images').set(img.id, img), []);
+  const updateImage = useCallback((img: BoardImage) => ydocRef.current?.getMap('images').set(img.id, img), []);
+  const deleteImage = useCallback((id: string) => ydocRef.current?.getMap('images').delete(id), []);
 
-  const addFile = useCallback((file: BoardFile) => ydocRef.current?.getMap<BoardFile>('files').set(file.id, file), []);
-  const updateFile = useCallback((file: BoardFile) => ydocRef.current?.getMap<BoardFile>('files').set(file.id, file), []);
-  const deleteFile = useCallback((id: string) => ydocRef.current?.getMap<BoardFile>('files').delete(id), []);
+  const addFile = useCallback((file: BoardFile) => ydocRef.current?.getMap('files').set(file.id, file), []);
+  const updateFile = useCallback((file: BoardFile) => ydocRef.current?.getMap('files').set(file.id, file), []);
+  const deleteFile = useCallback((id: string) => ydocRef.current?.getMap('files').delete(id), []);
 
   return {
     paths, notes, images, files, isConnected, peers, remoteUsers, connectionError,
