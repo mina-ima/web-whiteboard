@@ -16,7 +16,7 @@ export default defineConfig({
     alias: {
       buffer: 'buffer',
       // Force all imports to resolve to the locally installed version
-      // This is critical to avoid "Yjs was already imported" errors
+      // This is critical to avoid "Yjs was already imported" errors and ensure single instance
       'yjs': path.resolve(__dirname, './node_modules/yjs'),
       'y-webrtc': path.resolve(__dirname, './node_modules/y-webrtc'),
       'y-protocols': path.resolve(__dirname, './node_modules/y-protocols'),
