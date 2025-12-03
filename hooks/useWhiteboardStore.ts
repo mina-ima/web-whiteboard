@@ -18,8 +18,9 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
   const [images, setImages] = useState<BoardImage[]>([]);
   const [files, setFiles] = useState<BoardFile[]>([]);
   const [isConnected, setIsConnected] = useState(false);
-  const [peers, setPeers] = useState<string[]>([]); // List of connected peer IDs
+  const [peers, setPeers] = useState<string[]>([]);
   const [remoteUsers, setRemoteUsers] = useState<UserAwareness[]>([]);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
 
   const ydocRef = useRef<Y.Doc | null>(null);
   const providerRef = useRef<WebrtcProvider | null>(null);
@@ -28,22 +29,21 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
   useEffect(() => {
     if (!roomId) return;
 
-    // Cleanup previous connection if exists
+    // Reset error
+    setConnectionError(null);
+
+    // Cleanup previous
     if (providerRef.current) {
       providerRef.current.destroy();
       ydocRef.current?.destroy();
     }
 
-    // Create a unique internal room name based on the numeric ID.
-    // Updated version prefix 'v10' to ensure fresh connection space
     const internalRoomName = `gemini-sb-v10-${roomId}`;
     console.log(`[YJS] Connecting to room: ${internalRoomName}`);
 
-    // Create Doc
     const ydoc = new Y.Doc();
     ydocRef.current = ydoc;
 
-    // Connect to WebRTC
     const provider = new WebrtcProvider(internalRoomName, ydoc, {
       signaling: SIGNALING_SERVERS,
       password: passcode || null,
@@ -74,7 +74,7 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
        setPeers(connectedPeers);
     });
 
-    // --- Awareness (Cursors & Users) ---
+    // --- Awareness & Password Check ---
     const userColor = USER_COLORS[Math.floor(Math.random() * USER_COLORS.length)];
     
     const setLocalState = () => {
@@ -91,7 +91,7 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
     provider.awareness.on('change', () => {
       const states = Array.from(provider.awareness.getStates().entries()) as [number, any][];
       const users: UserAwareness[] = states
-        .filter(([clientId, state]) => clientId !== ydoc.clientID && state.user) // Exclude self
+        .filter(([clientId, state]) => clientId !== ydoc.clientID && state.user)
         .map(([clientId, state]) => ({
           clientId,
           user: state.user,
@@ -106,61 +106,65 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
     const yImages = ydoc.getMap<BoardImage>('images');
     const yFiles = ydoc.getMap<BoardFile>('files');
 
-    // Initial Sync
     setPaths(yPaths.toArray());
     setNotes(Array.from(yNotes.values()));
     setImages(Array.from(yImages.values()));
     setFiles(Array.from(yFiles.values()));
 
-    // Observe Changes
-    yPaths.observe(() => {
-        setPaths(yPaths.toArray());
-    });
+    yPaths.observe(() => setPaths(yPaths.toArray()));
     yNotes.observe(() => setNotes(Array.from(yNotes.values())));
     yImages.observe(() => setImages(Array.from(yImages.values())));
     yFiles.observe(() => setFiles(Array.from(yFiles.values())));
 
+    // --- Heuristic Password Check ---
+    // If we have connected peers but cannot decrypt their awareness (remoteUsers remains empty)
+    // it likely means the password is wrong.
+    const checkInterval = setInterval(() => {
+        const hasPeers = provider.room && (provider.room as any).peers.size > 0;
+        const hasAwareness = provider.awareness.getStates().size > 1; // 1 is self
+        
+        // If we are connected to peers for a while but see no one (and we are not the creator alone)
+        // This is a guess. If users enter a populated room with wrong password.
+        if (hasPeers && !hasAwareness) {
+            // We give it some time, but if this persists, it's likely a password error.
+            // However, distinguishing "Empty Room" from "Wrong Password" is hard if we are alone.
+            // But if 'peers' (WebRTC connections) exist, we are NOT alone.
+            // So Peers > 0 AND Awareness == 1 means encryption failed.
+            console.warn("Peers detected but no awareness data. Likely wrong password.");
+            setConnectionError("Incorrect password. Unable to join secure session.");
+        }
+    }, 4000); 
+
     return () => {
-      console.log('[YJS] Disconnecting...');
+      clearInterval(checkInterval);
       provider.destroy();
       ydoc.destroy();
     };
   }, [roomId, passcode, userName]); 
 
-  // --- Broadcast Cursor ---
+  // Cursor Helper
   const updateCursor = useCallback((point: {x: number, y: number} | null) => {
     if (awarenessRef.current) {
         awarenessRef.current.setLocalStateField('cursor', point);
     }
   }, []);
 
-  // --- Mutation Helpers ---
-  const addPath = useCallback((path: Path) => {
-    ydocRef.current?.getArray<Path>('paths').push([path]);
-  }, []);
-
+  // Mutation Helpers
+  const addPath = useCallback((path: Path) => ydocRef.current?.getArray<Path>('paths').push([path]), []);
   const deletePaths = useCallback((pathIds: string[]) => {
     const yPaths = ydocRef.current?.getArray<Path>('paths');
     if (!yPaths) return;
-    
     ydocRef.current?.transact(() => {
       const current = yPaths.toArray();
       const indexesToDelete: number[] = [];
-      
-      current.forEach((p, i) => {
-        if (pathIds.includes(p.id)) {
-          indexesToDelete.push(i);
-        }
-      });
+      current.forEach((p, i) => { if (pathIds.includes(p.id)) indexesToDelete.push(i); });
       indexesToDelete.sort((a, b) => b - a).forEach(i => yPaths.delete(i, 1));
     });
   }, []);
 
   const clearBoard = useCallback(() => {
     ydocRef.current?.transact(() => {
-      const yPaths = ydocRef.current?.getArray('paths');
-      if (yPaths) yPaths.delete(0, yPaths.length);
-      
+      ydocRef.current?.getArray('paths').delete(0, ydocRef.current?.getArray('paths').length);
       ydocRef.current?.getMap('notes').clear();
       ydocRef.current?.getMap('images').clear();
       ydocRef.current?.getMap('files').clear();
@@ -180,25 +184,8 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
   const deleteFile = useCallback((id: string) => ydocRef.current?.getMap<BoardFile>('files').delete(id), []);
 
   return {
-    paths,
-    notes,
-    images,
-    files,
-    isConnected,
-    peers,
-    remoteUsers,
-    updateCursor,
-    addPath,
-    deletePaths,
-    clearBoard,
-    addNote,
-    updateNote,
-    deleteNote,
-    addImage,
-    updateImage,
-    deleteImage,
-    addFile,
-    updateFile,
-    deleteFile
+    paths, notes, images, files, isConnected, peers, remoteUsers, connectionError,
+    updateCursor, addPath, deletePaths, clearBoard,
+    addNote, updateNote, deleteNote, addImage, updateImage, deleteImage, addFile, updateFile, deleteFile
   };
 };

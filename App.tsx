@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { Whiteboard } from './components/Whiteboard';
 import { Toolbar } from './components/Toolbar';
@@ -19,6 +19,7 @@ interface UserSession {
 const App: React.FC = () => {
   const [session, setSession] = useState<UserSession | null>(null);
   const [showInvite, setShowInvite] = useState(false);
+  const [loginError, setLoginError] = useState<string>('');
   
   const [tool, setTool] = useState<ToolType>(ToolType.PEN);
   const [isAiOpen, setIsAiOpen] = useState(false);
@@ -26,7 +27,7 @@ const App: React.FC = () => {
 
   // Hook into Real-time Store
   const { 
-    paths, notes, images, files, isConnected, peers, remoteUsers,
+    paths, notes, images, files, isConnected, peers, remoteUsers, connectionError,
     addPath, deletePaths, clearBoard,
     addNote, updateNote, deleteNote,
     addImage, updateImage, deleteImage,
@@ -34,7 +35,16 @@ const App: React.FC = () => {
     updateCursor
   } = useWhiteboardStore(session?.roomId || null, session?.passcode || null, session?.userName || '');
 
+  // Handle Connection Errors (e.g. Wrong Password)
+  useEffect(() => {
+    if (connectionError && session) {
+        setSession(null); // Logout
+        setLoginError(connectionError);
+    }
+  }, [connectionError, session]);
+
   const handleLogin = (userName: string, roomId: string, passcode: string, isCreator: boolean) => {
+    setLoginError('');
     setSession({ userName, roomId, passcode });
     if (isCreator) {
         setShowInvite(true);
@@ -116,7 +126,7 @@ const App: React.FC = () => {
   };
 
   if (!session) {
-    return <LoginScreen onJoin={handleLogin} />;
+    return <LoginScreen onJoin={handleLogin} initialError={loginError} />;
   }
 
   return (

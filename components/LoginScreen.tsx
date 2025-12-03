@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { SparklesIcon, LockClosedIcon, UserIcon, HashtagIcon, PlusCircleIcon, ArrowRightOnRectangleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 
 interface LoginScreenProps {
   onJoin: (userName: string, roomId: string, password: string, isCreator: boolean) => void;
+  initialError?: string;
 }
 
-export const LoginScreen: React.FC<LoginScreenProps> = ({ onJoin }) => {
+export const LoginScreen: React.FC<LoginScreenProps> = ({ onJoin, initialError }) => {
   const [mode, setMode] = useState<'create' | 'join'>('create');
   
   const [userName, setUserName] = useState('');
@@ -17,6 +18,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onJoin }) => {
   const [createPasscode, setCreatePasscode] = useState('');
   
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (initialError) setError(initialError);
+  }, [initialError]);
 
   const generateRoomId = () => {
     // Generate a random 4-digit number string
@@ -165,12 +170,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onJoin }) => {
                     className="block w-full pl-10 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-sm"
                     placeholder="Enter room password"
                   />
-                </div>
-                <div className="flex items-start gap-1.5 mt-2 bg-amber-50 p-2 rounded-lg border border-amber-100">
-                    <ExclamationTriangleIcon className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
-                    <p className="text-[10px] text-amber-700 leading-tight">
-                        Note: If the password is incorrect, you can still enter the room, but <span className="font-bold">you will not see any content</span> or other users.
-                    </p>
                 </div>
               </div>
 
