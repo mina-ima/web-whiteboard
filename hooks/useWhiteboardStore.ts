@@ -3,10 +3,12 @@ import * as Y from 'yjs';
 import { WebrtcProvider } from 'y-webrtc';
 import { Path, StickyNote, BoardImage, BoardFile, UserAwareness } from '../types';
 
-// Use the primary public signaling server to ensure all users connect to the same hub.
-// Using multiple servers can sometimes lead to split-brain if users connect to different subsets.
+// Use multiple public signaling servers for redundancy.
+// If one is down or blocked, others can mediate the connection.
 const SIGNALING_SERVERS = [
-  'wss://signaling.yjs.dev'
+  'wss://signaling.yjs.dev',
+  'wss://y-webrtc-signaling-eu.herokuapp.com',
+  'wss://y-webrtc-signaling-us.herokuapp.com'
 ];
 
 const USER_COLORS = ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#10b981', '#06b6d4', '#3b82f6', '#8b5cf6', '#d946ef', '#f43f5e'];
@@ -34,8 +36,8 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
     }
 
     // Create a unique internal room name.
-    // Updated to v5 to ensure a clean slate for connectivity.
-    const internalRoomName = `gemini-sb-v5-${roomId}`;
+    // Updated to v6 to ensure a clean slate for connectivity.
+    const internalRoomName = `gemini-sb-v6-${roomId}`;
     console.log(`[YJS] Connecting to room: ${internalRoomName}`);
 
     // Create Doc
