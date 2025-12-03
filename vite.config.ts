@@ -7,7 +7,7 @@ export default defineConfig({
   define: {
     // Determine API_KEY from process.env for build time or runtime
     'process.env.API_KEY': JSON.stringify(process.env.API_KEY),
-    'global': 'window',
+    // 'global': 'window', // REMOVED: This causes issues with simple-peer in modern bundlers
     // 'process': {}, // REMOVED: This breaks simple-peer in browser
   },
   resolve: {

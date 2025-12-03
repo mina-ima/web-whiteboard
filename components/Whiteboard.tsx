@@ -285,10 +285,11 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
 
     // 5. Handle Drawing (Pen)
     if (isDrawingRef.current && tool === ToolType.PEN) {
-      // Coalesced events give higher precision for Pen inputs
-      // Fix TS Error by casting to any or generic PointerEvent
       const nativeEvent = e.nativeEvent as any;
-      const events = nativeEvent?.getCoalescedEvents ? nativeEvent.getCoalescedEvents() : [e];
+      // Safety check for getCoalescedEvents
+      const events = (nativeEvent && typeof nativeEvent.getCoalescedEvents === 'function') 
+          ? nativeEvent.getCoalescedEvents() 
+          : [e];
       
       events.forEach((evt: any) => {
          const rect = containerRef.current!.getBoundingClientRect();
@@ -305,7 +306,9 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
   const handlePointerUp = (e: React.PointerEvent) => {
     e.preventDefault();
     if (containerRef.current && (tool === ToolType.PEN || tool === ToolType.ERASER)) {
-        containerRef.current.releasePointerCapture(e.pointerId);
+        if(containerRef.current.hasPointerCapture(e.pointerId)){
+            containerRef.current.releasePointerCapture(e.pointerId);
+        }
     }
 
     if (dragItem) setDragItem(null);
@@ -557,4 +560,4 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
       ))}
     </div>
   );
-};
+}

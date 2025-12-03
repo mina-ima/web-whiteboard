@@ -3,8 +3,9 @@ import * as Y from 'yjs';
 import { WebrtcProvider } from 'y-webrtc';
 import { Path, StickyNote, BoardImage, BoardFile, UserAwareness } from '../types';
 
-// Use a list of public signaling servers
+// Use a robust list of public signaling servers
 const SIGNALING_SERVERS = [
+  'wss://demos.yjs.dev',
   'wss://signaling.yjs.dev',
   'wss://y-webrtc-signaling-eu.herokuapp.com',
   'wss://y-webrtc-signaling-us.herokuapp.com'
@@ -35,13 +36,14 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
     ydocRef.current = ydoc;
 
     // Connect to WebRTC
+    // Note: Passcode is not natively supported by y-webrtc in this simple setup without a custom signaling server.
+    // We rely on the obscure room name (UUID based) for security in this demo.
     const provider = new WebrtcProvider(`gemini-board-${roomId}`, ydoc, {
       signaling: SIGNALING_SERVERS,
       maxConns: 20 + Math.floor(Math.random() * 15),
       filterBcConns: false,
-      // Add STUN servers to allow connections across different networks (NAT traversal)
       peerOpts: {
-        poly: false, // Ensure simple-peer uses native WebRTC
+        // poly: false, // Removed to let library decide
         config: {
           iceServers: [
             { urls: 'stun:stun.l.google.com:19302' },
@@ -55,10 +57,9 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
     awarenessRef.current = provider.awareness;
 
     // --- Connection Status ---
-    // Fix TS error by casting event to any, as definition might mismatch
     provider.on('status', (event: any) => {
       console.log(`[YJS] Connection status: ${event.status}`);
-      setIsConnected(event.status === 'connected');
+      setIsConnected(event.connected || event.status === 'connected');
     });
 
     provider.on('synced', (event: any) => {
@@ -118,7 +119,7 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
       provider.destroy();
       ydoc.destroy();
     };
-  }, [roomId]); // Removed passcode dependency to avoid re-connects
+  }, [roomId]); 
 
   // --- Broadcast Cursor ---
   const updateCursor = useCallback((point: {x: number, y: number} | null) => {
