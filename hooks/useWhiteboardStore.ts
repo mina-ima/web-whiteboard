@@ -4,7 +4,6 @@ import { WebrtcProvider } from 'y-webrtc';
 import { Path, StickyNote, BoardImage, BoardFile, UserAwareness } from '../types';
 
 // Use multiple public signaling servers for redundancy.
-// If one is down or blocked, others can mediate the connection.
 const SIGNALING_SERVERS = [
   'wss://signaling.yjs.dev',
   'wss://y-webrtc-signaling-eu.herokuapp.com',
@@ -24,7 +23,7 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
 
   const ydocRef = useRef<Y.Doc | null>(null);
   const providerRef = useRef<WebrtcProvider | null>(null);
-  const awarenessRef = useRef<any>(null); // Y-protocols awareness
+  const awarenessRef = useRef<any>(null);
 
   useEffect(() => {
     if (!roomId) return;
@@ -36,8 +35,8 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
     }
 
     // Create a unique internal room name.
-    // Updated to v6 to ensure a clean slate for connectivity.
-    const internalRoomName = `gemini-sb-v6-${roomId}`;
+    // Updated to v7 to ensure a clean slate.
+    const internalRoomName = `gemini-sb-v7-${roomId}`;
     console.log(`[YJS] Connecting to room: ${internalRoomName}`);
 
     // Create Doc
@@ -45,10 +44,11 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
     ydocRef.current = ydoc;
 
     // Connect to WebRTC
+    // Note: We deliberately avoid filtering broadcast connections to ensure simpler P2P finding
     const provider = new WebrtcProvider(internalRoomName, ydoc, {
       signaling: SIGNALING_SERVERS,
-      maxConns: 30, 
-      filterBcConns: false,
+      maxConns: 20 + Math.floor(Math.random() * 5), // Slight random variation to prevent lockstep limits
+      filterBcConns: false, 
       peerOpts: {
         poly: false,
         config: {
@@ -69,8 +69,9 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
     });
 
     provider.on('peers', (event: any) => {
+       // webrtcConns is a Map of connection objects
        const connectedPeers = Array.from(event.webrtcConns.keys()) as string[];
-       console.log('[YJS] Peers updated:', connectedPeers);
+       console.log('[YJS] Peers updated:', connectedPeers.length, connectedPeers);
        setPeers(connectedPeers);
     });
 
