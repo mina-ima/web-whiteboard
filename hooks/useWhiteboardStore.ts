@@ -3,12 +3,9 @@ import * as Y from 'yjs';
 import { WebrtcProvider } from 'y-webrtc';
 import { Path, StickyNote, BoardImage, BoardFile, UserAwareness } from '../types';
 
-// Use a robust list of public signaling servers
+// Use the most reliable public signaling server to ensure everyone connects to the same lobby
 const SIGNALING_SERVERS = [
-  'wss://demos.yjs.dev',
-  'wss://signaling.yjs.dev',
-  'wss://y-webrtc-signaling-eu.herokuapp.com',
-  'wss://y-webrtc-signaling-us.herokuapp.com'
+  'wss://demos.yjs.dev'
 ];
 
 const USER_COLORS = ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#10b981', '#06b6d4', '#3b82f6', '#8b5cf6', '#d946ef', '#f43f5e'];
@@ -29,6 +26,12 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
   useEffect(() => {
     if (!roomId) return;
 
+    // Cleanup previous connection if exists
+    if (providerRef.current) {
+      providerRef.current.destroy();
+      ydocRef.current?.destroy();
+    }
+
     console.log(`[YJS] Connecting to room: gemini-board-${roomId}`);
 
     // Create Doc
@@ -43,12 +46,11 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
       maxConns: 20 + Math.floor(Math.random() * 15),
       filterBcConns: false,
       peerOpts: {
-        // poly: false, // Removed to let library decide
+        poly: false,
         config: {
           iceServers: [
             { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:global.stun.twilio.com:3478' },
-            { urls: 'stun:stun.services.mozilla.com' }
+            { urls: 'stun:global.stun.twilio.com:3478' }
           ]
         }
       } as any 
