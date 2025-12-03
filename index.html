@@ -18,6 +18,14 @@ background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
 background-size: 20px 20px;
 }
 </style>
+<script>
+// Polyfills for Node.js environments required by simple-peer/y-webrtc in browser
+window.global = window;
+window.process = window.process || {};
+window.process.env = window.process.env || {};
+window.process.version = '';
+window.process.nextTick = function(fn) { setTimeout(fn, 0); };
+</script>
 <script type="importmap">
 {
   "imports": {
