@@ -19,9 +19,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onJoin }) => {
   const [error, setError] = useState('');
 
   const generateRoomId = () => {
-    // Generate a random simple ID like "MEET-123"
+    // Generate a random 4-digit number string
     const randomNum = Math.floor(1000 + Math.random() * 9000);
-    return `BOARD-${randomNum}`;
+    return randomNum.toString();
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -42,8 +42,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onJoin }) => {
         setError('Room ID and Password are required to join.');
         return;
       }
-      // In a real app, you would verify these credentials against the server.
-      onJoin(userName, joinRoomId, joinPasscode, false);
+      // Basic validation to ensure they are entering just the number (though we accept strings)
+      onJoin(userName, joinRoomId.trim(), joinPasscode, false);
     }
   };
 
@@ -131,17 +131,19 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onJoin }) => {
           ) : (
             <div className="space-y-5 animate-in fade-in slide-in-from-left-4 duration-300">
               <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Room ID</label>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Room ID (Number)</label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <HashtagIcon className="h-5 w-5 text-gray-400" />
                   </div>
                   <input
                     type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     value={joinRoomId}
                     onChange={(e) => setJoinRoomId(e.target.value)}
                     className="block w-full pl-10 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-sm"
-                    placeholder="Ex. BOARD-1234"
+                    placeholder="Ex. 1234"
                   />
                 </div>
               </div>
