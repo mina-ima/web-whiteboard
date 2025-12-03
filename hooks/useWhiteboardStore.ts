@@ -38,7 +38,7 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
     }
 
     // Use a clean room ID namespace
-    const internalRoomName = `gemini-sb-v12-${roomId}`;
+    const internalRoomName = `gemini-sb-v13-${roomId}`;
     console.log(`[YJS] Connecting to room: ${internalRoomName}`);
 
     const ydoc = new Y.Doc();
