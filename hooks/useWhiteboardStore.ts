@@ -3,8 +3,12 @@ import * as Y from 'yjs';
 import { WebrtcProvider } from 'y-webrtc';
 import { Path, StickyNote, BoardImage, BoardFile, UserAwareness } from '../types';
 
-// Use the main Yjs signaling server for best reliability
-const SIGNALING_SERVERS = ['wss://signaling.yjs.dev'];
+// Use multiple signaling servers to ensure users can find each other
+const SIGNALING_SERVERS = [
+  'wss://signaling.yjs.dev',
+  'wss://y-webrtc-signaling-eu.herokuapp.com',
+  'wss://y-webrtc-signaling-us.herokuapp.com'
+];
 
 const USER_COLORS = ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#10b981', '#06b6d4', '#3b82f6', '#8b5cf6', '#d946ef', '#f43f5e'];
 
@@ -30,9 +34,9 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
       ydocRef.current?.destroy();
     }
 
-    // Create a unique internal room name with a version prefix to ensure clean state
-    // We use a fixed version string so all users of this app version connect to the same logical rooms
-    const internalRoomName = `gemini-smartboard-v3-${roomId}`;
+    // Create a unique internal room name.
+    // Adding a version prefix ensures we don't collide with older versions of the app.
+    const internalRoomName = `gemini-sb-v4-${roomId}`;
     console.log(`[YJS] Connecting to room: ${internalRoomName}`);
 
     // Create Doc
@@ -42,8 +46,8 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
     // Connect to WebRTC
     const provider = new WebrtcProvider(internalRoomName, ydoc, {
       signaling: SIGNALING_SERVERS,
-      maxConns: 30, // Increase max connections
-      filterBcConns: false, // Allow BroadcastChannel (same tab/browser syncing)
+      maxConns: 30, 
+      filterBcConns: false,
       peerOpts: {
         poly: false,
         config: {
@@ -63,25 +67,25 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
       setIsConnected(event.connected || event.status === 'connected');
     });
 
-    provider.on('synced', (event: any) => {
-       console.log('[YJS] Synced with peers:', event);
-    });
-
     provider.on('peers', (event: any) => {
-       console.log('[YJS] Peers updated:', event.webrtcConns.keys());
-       setPeers(Array.from(event.webrtcConns.keys()));
+       const connectedPeers = Array.from(event.webrtcConns.keys()) as string[];
+       console.log('[YJS] Peers updated:', connectedPeers);
+       setPeers(connectedPeers);
     });
 
     // --- Awareness (Cursors & Users) ---
     const userColor = USER_COLORS[Math.floor(Math.random() * USER_COLORS.length)];
     
-    provider.awareness.setLocalState({
-      user: {
-        name: userName,
-        color: userColor
-      },
-      cursor: null
-    });
+    const setLocalState = () => {
+        provider.awareness.setLocalState({
+          user: {
+            name: userName,
+            color: userColor
+          },
+          cursor: null
+        });
+    };
+    setLocalState();
 
     provider.awareness.on('change', () => {
       const states = Array.from(provider.awareness.getStates().entries()) as [number, any][];
@@ -120,7 +124,7 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
       provider.destroy();
       ydoc.destroy();
     };
-  }, [roomId]); 
+  }, [roomId, userName]); 
 
   // --- Broadcast Cursor ---
   const updateCursor = useCallback((point: {x: number, y: number} | null) => {
@@ -147,7 +151,7 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
           indexesToDelete.push(i);
         }
       });
-      // Delete in reverse order to preserve indexes
+      // Delete in reverse order
       indexesToDelete.sort((a, b) => b - a).forEach(i => yPaths.delete(i, 1));
     });
   }, []);

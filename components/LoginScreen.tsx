@@ -24,6 +24,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onJoin }) => {
     return randomNum.toString();
   };
 
+  const handleRoomIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Only allow numbers
+    const val = e.target.value.replace(/[^0-9]/g, '');
+    setJoinRoomId(val);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -35,14 +41,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onJoin }) => {
 
     if (mode === 'create') {
       const newRoomId = generateRoomId();
-      // In a real app, you would send this to the server to register the room and password.
       onJoin(userName, newRoomId, createPasscode, true);
     } else {
       if (!joinRoomId.trim()) {
         setError('Room ID is required.');
         return;
       }
-      // Pass the raw input. The store adds the prefix internally.
       onJoin(userName, joinRoomId.trim(), joinPasscode, false);
     }
   };
@@ -141,8 +145,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onJoin }) => {
                     inputMode="numeric"
                     pattern="[0-9]*"
                     value={joinRoomId}
-                    onChange={(e) => setJoinRoomId(e.target.value)}
-                    className="block w-full pl-10 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-sm"
+                    onChange={handleRoomIdChange}
+                    className="block w-full pl-10 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-sm font-mono"
                     placeholder="Ex. 1234"
                   />
                 </div>
@@ -176,4 +180,4 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onJoin }) => {
       </div>
     </div>
   );
-}
+};
