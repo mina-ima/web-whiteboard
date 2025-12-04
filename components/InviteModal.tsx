@@ -11,7 +11,7 @@ export const InviteModal: React.FC<InviteModalProps> = ({ roomId, passcode, onCl
   const [copied, setCopied] = React.useState(false);
 
   const handleCopy = () => {
-    const text = `Join my Gemini SmartBoard!\nRoom ID: ${roomId}\nPassword: ${passcode}`;
+    const text = `Gemini SmartBoardに参加してください！\nルームID: ${roomId}\nパスワード: ${passcode}`;
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -27,22 +27,22 @@ export const InviteModal: React.FC<InviteModalProps> = ({ roomId, passcode, onCl
           <XMarkIcon className="w-5 h-5" />
         </button>
 
-        <h3 className="text-lg font-bold text-gray-800 mb-2">Board Created! 🎉</h3>
+        <h3 className="text-lg font-bold text-gray-800 mb-2">ボードが作成されました！🎉</h3>
         <p className="text-sm text-gray-500 mb-6">
-          Share these details with your team so they can join this secure session.
+          この情報をチームと共有して、この安全なセッションに参加してもらいましょう。
         </p>
 
         <div className="bg-gray-50 rounded-xl p-4 border border-gray-200 space-y-4">
           <div>
-            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Room ID</span>
+            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">ルームID</span>
             <p className="text-2xl font-mono font-bold text-indigo-600 tracking-wide mt-1">{roomId}</p>
           </div>
           
           <div className="w-full h-px bg-gray-200"></div>
 
           <div>
-             <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Password</span>
-             <p className="text-lg font-mono font-medium text-gray-800 mt-1">{passcode || <span className="text-gray-400 italic">No password set</span>}</p>
+             <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">パスワード</span>
+             <p className="text-lg font-mono font-medium text-gray-800 mt-1">{passcode || <span className="text-gray-400 italic">パスワード未設定</span>}</p>
           </div>
         </div>
 
@@ -57,12 +57,12 @@ export const InviteModal: React.FC<InviteModalProps> = ({ roomId, passcode, onCl
           {copied ? (
             <>
               <ClipboardDocumentCheckIcon className="w-5 h-5" />
-              Copied to Clipboard
+              クリップボードにコピー済み
             </>
           ) : (
             <>
               <ClipboardDocumentIcon className="w-5 h-5" />
-              Copy Invitation
+              招待をコピー
             </>
           )}
         </button>

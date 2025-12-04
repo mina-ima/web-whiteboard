@@ -53,7 +53,7 @@ const App: React.FC = () => {
   };
 
   const handleClear = () => {
-    if (window.confirm('Are you sure you want to clear the board? This will clear it for everyone.')) {
+    if (window.confirm('ボードをクリアしてもよろしいですか？この操作は全員に適用されます。')) {
       clearBoard();
     }
   };
@@ -138,9 +138,9 @@ const App: React.FC = () => {
                   <div className="w-16 h-16 bg-indigo-50 rounded-full flex items-center justify-center mb-4 text-indigo-600">
                       <ArrowPathIcon className="w-8 h-8 animate-spin" />
                   </div>
-                  <h2 className="text-xl font-bold text-gray-800 mb-2">Connecting to Board...</h2>
+                  <h2 className="text-xl font-bold text-gray-800 mb-2">ボードに接続中...</h2>
                   <p className="text-sm text-gray-500 text-center mb-6">
-                      Verifying room ID and password credentials.
+                      ルームIDとパスワードを確認しています。
                   </p>
                   <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
                       <div className="h-full bg-indigo-600 animate-pulse w-2/3 rounded-full"></div>
@@ -158,7 +158,7 @@ const App: React.FC = () => {
             <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Gemini SmartBoard</h1>
             <div className="flex items-center gap-3 mt-1 pointer-events-auto">
                 <button className="text-sm text-slate-500 font-medium bg-white/80 backdrop-blur px-2 py-1 rounded-md border border-slate-200 shadow-sm cursor-copy hover:bg-white transition-colors" title="Copy Invite Info" onClick={() => setShowInvite(true)}>
-                    Room: <span className="text-indigo-600 font-mono">{session.roomId}</span>
+                    ルーム: <span className="text-indigo-600 font-mono">{session.roomId}</span>
                 </button>
                 <div className="w-px h-3 bg-slate-300"></div>
                 <div className="flex items-center gap-1 text-sm text-slate-500 bg-white/50 px-2 py-1 rounded-md">
@@ -168,17 +168,17 @@ const App: React.FC = () => {
                 <div className="w-px h-3 bg-slate-300"></div>
                 <div className={`flex items-center gap-1 text-sm px-2 py-1 rounded-md bg-white/50 ${isConnected ? 'text-green-600' : 'text-amber-500'}`}>
                     {isConnected ? <SignalIcon className="w-3 h-3" /> : <SignalSlashIcon className="w-3 h-3" />}
-                    <span>{isConnected ? 'Connected' : 'Reconnecting...'}</span>
+                    <span>{isConnected ? '接続済み' : '再接続中...'}</span>
                 </div>
                  <div className="w-px h-3 bg-slate-300"></div>
                  <div className="flex items-center gap-1 text-sm text-slate-600 bg-white/50 px-2 py-1 rounded-md">
                     <UsersIcon className="w-3 h-3" />
-                    <span>{peers.length + 1} online</span> 
+                    <span>{peers.length + 1} オンライン</span> 
                 </div>
                 {session.passcode && (
                      <div className="flex items-center gap-1 text-xs text-indigo-600 bg-indigo-50 px-2 py-1 rounded-md border border-indigo-100 ml-2">
                         <ShieldCheckIcon className="w-3 h-3" />
-                        <span>Encrypted</span>
+                        <span>暗号化済み</span>
                     </div>
                 )}
             </div>
@@ -189,7 +189,7 @@ const App: React.FC = () => {
         <button 
             onClick={() => setShowInvite(true)}
             className="p-2 bg-white text-indigo-600 rounded-full shadow-md hover:bg-gray-50 border border-gray-100 transition-colors"
-            title="Show Invite Info"
+            title="招待情報を表示"
         >
             <ClipboardDocumentIcon className="w-5 h-5" />
         </button>

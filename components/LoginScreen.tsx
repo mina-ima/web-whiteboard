@@ -40,7 +40,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onJoin, initialError }
     setError('');
 
     if (!userName.trim()) {
-      setError('Please enter your name.');
+      setError('名前を入力してください。');
       return;
     }
 
@@ -49,7 +49,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onJoin, initialError }
       onJoin(userName, newRoomId, createPasscode, true);
     } else {
       if (!joinRoomId.trim()) {
-        setError('Room ID is required.');
+        setError('ルームIDは必須です。');
         return;
       }
       onJoin(userName, joinRoomId.trim(), joinPasscode, false);
@@ -75,7 +75,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onJoin, initialError }
             }`}
           >
             <PlusCircleIcon className="w-4 h-4" />
-            Create New Board
+            新しいボードを作成
           </button>
           <button
             onClick={() => { setMode('join'); setError(''); }}
@@ -84,7 +84,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onJoin, initialError }
             }`}
           >
             <ArrowRightOnRectangleIcon className="w-4 h-4" />
-            Join Board
+            ボードに参加
           </button>
         </div>
 
@@ -96,7 +96,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onJoin, initialError }
           )}
 
           <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Your Name</label>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">あなたの名前</label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <UserIcon className="h-5 w-5 text-gray-400" />
@@ -106,7 +106,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onJoin, initialError }
                 value={userName}
                 onChange={(e) => setUserName(e.target.value)}
                 className="block w-full pl-10 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-sm"
-                placeholder="Ex. Alice"
+                placeholder="例: アリス"
               />
             </div>
           </div>
@@ -114,7 +114,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onJoin, initialError }
           {mode === 'create' ? (
             <div className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-300">
                <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Set Password (Optional)</label>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">パスワードを設定 (任意)</label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <LockClosedIcon className="h-5 w-5 text-gray-400" />
@@ -124,23 +124,23 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onJoin, initialError }
                     value={createPasscode}
                     onChange={(e) => setCreatePasscode(e.target.value)}
                     className="block w-full pl-10 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-sm"
-                    placeholder="Create a password for this board"
+                    placeholder="このボードのパスワードを作成"
                   />
                 </div>
-                <p className="text-[10px] text-gray-400 mt-1 ml-1">Share this password with others to let them join.</p>
+                <p className="text-[10px] text-gray-400 mt-1 ml-1">他のユーザーを招待するにはこのパスワードを共有してください。</p>
               </div>
               
               <button
                 type="submit"
                 className="w-full bg-indigo-600 text-white font-semibold py-3 px-4 rounded-xl hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 shadow-lg shadow-indigo-200 transition-all text-sm"
               >
-                Create & Enter
+                作成して入室
               </button>
             </div>
           ) : (
             <div className="space-y-5 animate-in fade-in slide-in-from-left-4 duration-300">
               <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Room ID (Number)</label>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">ルームID (数字)</label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <HashtagIcon className="h-5 w-5 text-gray-400" />
@@ -152,13 +152,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onJoin, initialError }
                     value={joinRoomId}
                     onChange={handleRoomIdChange}
                     className="block w-full pl-10 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-sm font-mono"
-                    placeholder="Ex. 1234"
+                    placeholder="例: 1234"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Password</label>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">パスワード</label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <LockClosedIcon className="h-5 w-5 text-gray-400" />
@@ -168,7 +168,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onJoin, initialError }
                     value={joinPasscode}
                     onChange={(e) => setJoinPasscode(e.target.value)}
                     className="block w-full pl-10 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-sm"
-                    placeholder="Enter room password"
+                    placeholder="ルームパスワードを入力"
                   />
                 </div>
               </div>
@@ -177,7 +177,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onJoin, initialError }
                 type="submit"
                 className="w-full bg-white text-indigo-600 font-semibold py-3 px-4 rounded-xl border border-indigo-200 hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all text-sm shadow-sm"
               >
-                Join Board
+                ボードに参加
               </button>
             </div>
           )}

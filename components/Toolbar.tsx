@@ -39,7 +39,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       <button 
         onClick={() => setTool(ToolType.SELECT)} 
         className={buttonClass(ToolType.SELECT)}
-        title="Select & Move"
+        title="選択・移動"
       >
         <CursorArrowRaysIcon className="w-6 h-6" />
       </button>
@@ -47,7 +47,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       <button 
         onClick={() => setTool(ToolType.PEN)} 
         className={buttonClass(ToolType.PEN)}
-        title="Freehand Pen"
+        title="フリーハンドペン"
       >
         <PencilIcon className="w-6 h-6" />
       </button>
@@ -55,7 +55,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       <button 
         onClick={() => setTool(ToolType.ERASER)} 
         className={buttonClass(ToolType.ERASER)}
-        title="Eraser"
+        title="消しゴム"
       >
         <BackspaceIcon className="w-6 h-6" />
       </button>
@@ -63,7 +63,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       <button 
         onClick={() => setTool(ToolType.NOTE)} 
         className={buttonClass(ToolType.NOTE)}
-        title="Add Sticky Note"
+        title="付箋を追加"
       >
         <DocumentTextIcon className="w-6 h-6" />
       </button>
@@ -79,7 +79,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         <label 
           htmlFor="file-upload" 
           className={`cursor-pointer block ${buttonClass(ToolType.IMAGE)}`}
-          title="Upload Image or File"
+          title="画像またはファイルをアップロード"
         >
           <PhotoIcon className="w-6 h-6" />
         </label>
@@ -90,7 +90,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       <button 
         onClick={onClear} 
         className="p-3 rounded-xl bg-white text-red-500 hover:bg-red-50 border border-gray-200 shadow-sm transition-colors"
-        title="Clear Board"
+        title="ボードをクリア"
       >
         <TrashIcon className="w-6 h-6" />
       </button>
@@ -102,10 +102,10 @@ export const Toolbar: React.FC<ToolbarProps> = ({
             ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg' 
             : 'bg-white text-purple-600 hover:bg-purple-50 border border-purple-100 shadow-sm'
         }`}
-        title="AI Assistant"
+        title="AIアシスタント"
       >
         <SparklesIcon className="w-6 h-6" />
-        <span className="hidden sm:inline">AI Copilot</span>
+        <span className="hidden sm:inline">AIコパイロット</span>
       </button>
     </div>
   );
