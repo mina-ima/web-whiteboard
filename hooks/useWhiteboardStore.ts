@@ -5,8 +5,8 @@ import { Path, StickyNote, BoardImage, BoardFile, UserAwareness } from '../types
 
 // Use a single reliable server to prevent Split Brain
 const SIGNALING_SERVERS = [
-  'wss://y-webrtc-signaling-eu.herokuapp.com',
-  // 'wss://y-webrtc-signaling-us.herokuapp.com',
+  'wss://y-webrtc-signaling-us.herokuapp.com',
+  // 'wss://y-webrtc-signaling-eu.herokuapp.com',
   // 'wss://signaling.yjs.dev',
 ];
 
