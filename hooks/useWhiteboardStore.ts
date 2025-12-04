@@ -19,6 +19,7 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
   const [peers, setPeers] = useState<string[]>([]);
   const [remoteUsers, setRemoteUsers] = useState<UserAwareness[]>([]);
   const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [isAuthenticating, setIsAuthenticating] = useState(true);
 
   const ydocRef = useRef<Y.Doc | null>(null);
   const providerRef = useRef<WebrtcProvider | null>(null);
@@ -118,46 +119,52 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
     yFiles.observe(() => setFiles(Array.from(yFiles.values()) as BoardFile[]));
 
     // --- Heuristic Password Check ---
-    let checkInterval: any = null;
-    let timeoutId: any = null;
+    let authTimeoutId: NodeJS.Timeout | null = null;
+    const awareness = provider.awareness; // Use a local const for easier access
 
-    // For participants in a password-protected room, set a timeout.
-    // If no peers are found within this time, assume the room is non-existent or the password is wrong.
+    // Start in an authenticating state by default.
+    setIsAuthenticating(true);
+
+    const cleanupAuth = () => {
+      if (authTimeoutId) clearTimeout(authTimeoutId);
+      awareness.off('update', awarenessUpdateHandler);
+    };
+
+    const awarenessUpdateHandler = () => {
+      // If we can decrypt more than just our own state, the password is correct.
+      if (awareness.getStates().size > 1) {
+        console.log("[Security] Peer awareness decrypted. Clearing auth timeout.");
+        cleanupAuth();
+        setIsAuthenticating(false); // Auth complete
+      }
+    };
+
+    // For participants joining a password-protected room, set a timeout.
+    // If we can't decrypt any other user's awareness within this time,
+    // assume the room is non-existent or the password is wrong.
     if (!isCreator && passcode) {
-        timeoutId = setTimeout(() => {
-            const currentPeers = (providerRef.current?.room as any)?.webrtcConns?.size || 0;
-            if (currentPeers === 0) {
-                console.warn(`[Security] Timed out waiting for peers. Room is password-protected. Assuming wrong password or non-existent room.`);
-                setConnectionError("Authentication timed out. The room may not exist, or the password may be incorrect.");
-                if (checkInterval) clearInterval(checkInterval);
-            }
-        }, 7000); // 7-second timeout
+      console.log("[Security] Joining protected room. Setting auth timeout.");
+
+      awareness.on('update', awarenessUpdateHandler);
+
+      authTimeoutId = setTimeout(() => {
+        // After timeout, check if we ever managed to decrypt another peer.
+        if (awareness.getStates().size <= 1) {
+          console.warn(`[Security] Auth timed out. No other users' data could be decrypted.`);
+          setConnectionError("Authentication failed. The room may not exist, or the password may be incorrect.");
+        } else {
+          console.log("[Security] Auth timeout finished, but peers were found just in time.");
+        }
+        cleanupAuth();
+        setIsAuthenticating(false); // Auth process is over, regardless of outcome
+      }, 7000); // 7-second timeout
+    } else {
+      // If not a joiner with password, we are instantly "authenticated".
+      setIsAuthenticating(false);
     }
 
-    checkInterval = setInterval(() => {
-        if (!providerRef.current) {
-            clearInterval(checkInterval);
-            return;
-        }
-        
-        // This check is for when there are peers, but we can't decrypt their data.
-        if (passcode) {
-          const hasPeers = (providerRef.current.room as any)?.webrtcConns?.size > 0;
-          const awarenessStates = providerRef.current.awareness.getStates();
-          const hasDecryptedAwareness = awarenessStates.size > 1; // More than just our own awareness state
-          
-          if (hasPeers && !hasDecryptedAwareness) {
-              console.warn("[Security] Peers detected but could not decrypt awareness. Passwords likely do not match.");
-              setConnectionError("Incorrect password. Unable to decrypt room data.");
-              if (timeoutId) clearTimeout(timeoutId);
-              clearInterval(checkInterval);
-          }
-        }
-    }, 2000); 
-
     return () => {
-      if (checkInterval) clearInterval(checkInterval);
-      if (timeoutId) clearTimeout(timeoutId);
+      cleanupAuth();
       provider.destroy();
       ydoc.destroy();
     };
@@ -206,7 +213,7 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
   const deleteFile = useCallback((id: string) => ydocRef.current?.getMap('files').delete(id), []);
 
   return {
-    paths, notes, images, files, isConnected, peers, remoteUsers, connectionError,
+    paths, notes, images, files, isConnected, peers, remoteUsers, connectionError, isAuthenticating,
     updateCursor, addPath, deletePaths, clearBoard,
     addNote, updateNote, deleteNote, addImage, updateImage, deleteImage, addFile, updateFile, deleteFile
   };

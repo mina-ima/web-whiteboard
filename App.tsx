@@ -21,7 +21,6 @@ const App: React.FC = () => {
   const [session, setSession] = useState<UserSession | null>(null);
   const [showInvite, setShowInvite] = useState(false);
   const [loginError, setLoginError] = useState<string>('');
-  const [isVerifying, setIsVerifying] = useState(false);
   
   const [tool, setTool] = useState<ToolType>(ToolType.PEN);
   const [isAiOpen, setIsAiOpen] = useState(false);
@@ -29,7 +28,7 @@ const App: React.FC = () => {
 
   // Hook into Real-time Store
   const { 
-    paths, notes, images, files, isConnected, peers, remoteUsers, connectionError,
+    paths, notes, images, files, isConnected, peers, remoteUsers, connectionError, isAuthenticating,
     addPath, deletePaths, clearBoard,
     addNote, updateNote, deleteNote,
     addImage, updateImage, deleteImage,
@@ -41,40 +40,15 @@ const App: React.FC = () => {
   useEffect(() => {
     if (connectionError && session) {
         setSession(null); // Logout
-        setIsVerifying(false);
         setLoginError(connectionError);
     }
   }, [connectionError, session]);
 
-  // Handle Verification Success
-  useEffect(() => {
-    if (session && isVerifying) {
-        // If we connect and stay connected without error for a moment, or if we are the creator/alone
-        // Logic: 
-        // 1. If we have peers and remoteUsers > 0, we matched passwords.
-        // 2. If we have no peers (new room), we are good.
-        // 3. If we have peers but no remoteUsers, the hook will throw connectionError after delay.
-        
-        // We simply wait for the hook to NOT throw an error. 
-        // But to give visual feedback, we'll wait for 'isConnected' to be true.
-        if (isConnected) {
-            // Give a small buffer for the password check heuristic to fire if needed
-            const timer = setTimeout(() => {
-                setIsVerifying(false);
-            }, 3000); // Wait 3s to allow for heuristic check
-            return () => clearTimeout(timer);
-        }
-    }
-  }, [session, isVerifying, isConnected]);
-
   const handleLogin = (userName: string, roomId: string, passcode: string, isCreator: boolean) => {
     setLoginError('');
     setSession({ userName, roomId, passcode, isCreator });
-    setIsVerifying(true); // Start verification
     if (isCreator) {
         setShowInvite(true);
-        // Creators don't need to verify against others initially
-        setIsVerifying(false);
     }
   };
 
@@ -157,7 +131,7 @@ const App: React.FC = () => {
   }
 
   // Verification Loading Screen
-  if (isVerifying) {
+  if (isAuthenticating) {
       return (
           <div className="w-screen h-screen flex flex-col items-center justify-center bg-slate-50 dot-grid">
               <div className="bg-white p-8 rounded-2xl shadow-xl flex flex-col items-center max-w-sm w-full border border-gray-100 animate-in fade-in zoom-in-95">
