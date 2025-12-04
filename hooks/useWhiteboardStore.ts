@@ -1,14 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import * as Y from 'yjs';
-import { WebrtcProvider } from 'y-webrtc';
-import { Path, StickyNote, BoardImage, BoardFile, UserAwareness } from '../types';
+import { WebsocketProvider } from 'y-websocket';
 
-// Use a single reliable server to prevent Split Brain
-const SIGNALING_SERVERS = [
-  'wss://y-webrtc-signaling-us.herokuapp.com',
-  // 'wss://y-webrtc-signaling-eu.herokuapp.com',
-  // 'wss://signaling.yjs.dev',
-];
+// Y.js Websocket Server URL - to be provided by Cloudflare Workers
+// This will be set via an environment variable in Vercel
+const Y_WEBSOCKET_SERVER_URL = import.meta.env.VITE_Y_WEBSOCKET_SERVER_URL || 'ws://localhost:1234';
 
 const USER_COLORS = ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#10b981', '#06b6d4', '#3b82f6', '#8b5cf6', '#d946ef', '#f43f5e'];
 
@@ -18,7 +14,7 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
   const [images, setImages] = useState<BoardImage[]>([]);
   const [files, setFiles] = useState<BoardFile[]>([]);
   const [isConnected, setIsConnected] = useState(false);
-  const [peers, setPeers] = useState<string[]>([]);
+
   const [remoteUsers, setRemoteUsers] = useState<UserAwareness[]>([]);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [isAuthenticating, setIsAuthenticating] = useState(true);
@@ -52,24 +48,14 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
     const internalRoomName = `gemini-sb-v13-${roomId}`;
     console.log(`[YJS-SETUP] Creating new provider for room: ${internalRoomName}`);
 
-    const provider = new WebrtcProvider(internalRoomName, ydoc, {
-      signaling: SIGNALING_SERVERS,
-      password: passcode || null,
-      maxConns: 20 + Math.floor(Math.random() * 5),
-      filterBcConns: false,
-      peerOpts: {
-          config: {
-            iceServers: [
-              { urls: "stun:stun.l.google.com:19302" },
-              { urls: "stun:global.stun.twilio.com:3478" },
-              { urls: "stun:stun1.l.google.com:19302" },
-              { urls: "stun:stun2.l.google.com:19302" },
-              { urls: "stun:stun.services.mozilla.com" },
-              { urls: "stun:stun.xten.com" }
-            ]
-          }
+    const provider = new WebsocketProvider(
+      Y_WEBSOCKET_SERVER_URL,
+      internalRoomName,
+      ydoc,
+      {
+        connect: false // We will connect manually after auth logic is handled
       }
-    });
+    );
     providerRef.current = provider;
     awarenessRef.current = provider.awareness;
 
@@ -83,10 +69,7 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
         console.log(`[YJS-EVENT] Synced: ${synced}`);
     });
 
-    provider.on('peers', (event: any) => {
-       console.log(`[YJS-EVENT] Peers changed: added=${event.added.length}, removed=${event.removed.length}, conns=${event.webrtcConns.size}`);
-       setPeers(Array.from(event.webrtcConns.keys()));
-    });
+
     
     awarenessRef.current.on('change', (changes: any) => {
         console.log(`[YJS-AWARENESS] Change: added=${changes.added.length}, updated=${changes.updated.length}, removed=${changes.removed.length}`);
@@ -115,62 +98,8 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
     yImages.observe(syncData);
     yFiles.observe(syncData);
 
-    // --- Authentication Logic ---
-    let authTimeoutId: NodeJS.Timeout | null = null;
-    const awareness = provider.awareness;
-
-    const cleanupAuth = () => {
-      if (authTimeoutId) {
-        console.log('[Auth] Clearing authentication timeout.');
-        clearTimeout(authTimeoutId);
-        authTimeoutId = null;
-      }
-      awareness.off('update', awarenessUpdateHandler);
-    };
-
-    const awarenessUpdateHandler = (changes: any) => {
-      const awarenessCount = awareness.getStates().size;
-      console.log(`[Auth] Awareness update received. Total states: ${awarenessCount}. Changes:`, changes);
-      if (awarenessCount > 1) {
-        console.log("[Auth] SUCCESS: Decrypted peer awareness. Authentication successful.");
-        cleanupAuth();
-        setIsAuthenticating(false);
-      }
-    };
-
-    awareness.setLocalState({ user: { name: userName, color: USER_COLORS[ydoc.clientID % USER_COLORS.length] }, cursor: null });
-
-    if (!isCreator && passcode) {
-      console.log("[Auth] Starting password authentication process for joiner.");
-      awareness.on('update', awarenessUpdateHandler);
-      
-      authTimeoutId = setTimeout(() => {
-        const peerCount = (providerRef.current as any)?.webrtcConns?.size || 0;
-        const awarenessCount = awareness.getStates().size;
-        console.log(`[Auth] TIMEOUT CHECK: Peer connections=${peerCount}, Decrypted awareness states=${awarenessCount}`);
-
-        if (peerCount > 0 && awarenessCount <= 1) {
-          console.warn("[Auth] FAILURE: Peers are present, but awareness could not be decrypted. Setting connection error.");
-          setConnectionError("Authentication failed: Incorrect password.");
-        } else {
-          console.log("[Auth] SUCCESS (by timeout): No peers to verify against, or already verified. Assuming success.");
-        }
-        
-        cleanupAuth();
-        setIsAuthenticating(false);
-      }, 10000); // Extended to 10 seconds
-
-    } else {
-      console.log("[Auth] No authentication needed (is creator or no password).");
-      setIsAuthenticating(false);
-    }
-
-    return () => {
-      console.log(`[YJS-EFFECT] Cleanup: room=${roomId}`);
-      cleanupAuth();
-      provider.destroy();
-      ydoc.destroy();
-    };
+    // Connect to WebSocket after setting up awareness
+    provider.connect();
   }, [roomId, passcode, userName, isCreator]);
 
   // Cursor Helper
@@ -216,7 +145,7 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
   const deleteFile = useCallback((id: string) => ydocRef.current?.getMap('files').delete(id), []);
 
   return {
-    paths, notes, images, files, isConnected, peers, remoteUsers, connectionError, isAuthenticating,
+    paths, notes, images, files, isConnected, remoteUsers, connectionError, isAuthenticating,
     updateCursor, addPath, deletePaths, clearBoard,
     addNote, updateNote, deleteNote, addImage, updateImage, deleteImage, addFile, updateFile, deleteFile
   };
