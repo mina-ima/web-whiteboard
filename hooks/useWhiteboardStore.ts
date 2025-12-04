@@ -10,7 +10,7 @@ const SIGNALING_SERVERS = [
 
 const USER_COLORS = ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#10b981', '#06b6d4', '#3b82f6', '#8b5cf6', '#d946ef', '#f43f5e'];
 
-export const useWhiteboardStore = (roomId: string | null, passcode: string | null, userName: string) => {
+export const useWhiteboardStore = (roomId: string | null, passcode: string | null, userName: string, isCreator: boolean) => {
   const [paths, setPaths] = useState<Path[]>([]);
   const [notes, setNotes] = useState<StickyNote[]>([]);
   const [images, setImages] = useState<BoardImage[]>([]);
@@ -39,7 +39,7 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
 
     // Use a clean room ID namespace
     const internalRoomName = `gemini-sb-v13-${roomId}`;
-    console.log(`[YJS] Connecting to room: ${internalRoomName}`);
+    console.log(`[YJS] Connecting to room: ${internalRoomName}, isCreator: ${isCreator}`);
 
     const ydoc = new Y.Doc();
     ydocRef.current = ydoc;
@@ -118,25 +118,50 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
     yFiles.observe(() => setFiles(Array.from(yFiles.values()) as BoardFile[]));
 
     // --- Heuristic Password Check ---
-    const checkInterval = setInterval(() => {
-        if (!providerRef.current) return;
+    let checkInterval: any = null;
+    let timeoutId: any = null;
+
+    // For participants in a password-protected room, set a timeout.
+    // If no peers are found within this time, assume the room is non-existent or the password is wrong.
+    if (!isCreator && passcode) {
+        timeoutId = setTimeout(() => {
+            const currentPeers = (providerRef.current?.room as any)?.webrtcConns?.size || 0;
+            if (currentPeers === 0) {
+                console.warn(`[Security] Timed out waiting for peers. Room is password-protected. Assuming wrong password or non-existent room.`);
+                setConnectionError("Authentication timed out. The room may not exist, or the password may be incorrect.");
+                if (checkInterval) clearInterval(checkInterval);
+            }
+        }, 7000); // 7-second timeout
+    }
+
+    checkInterval = setInterval(() => {
+        if (!providerRef.current) {
+            clearInterval(checkInterval);
+            return;
+        }
         
-        const hasPeers = (providerRef.current.room as any)?.peers?.size > 0;
-        const awarenessStates = providerRef.current.awareness.getStates();
-        const hasDecryptedAwareness = awarenessStates.size > 1; // >1 because 1 is ourselves
-        
-        if (hasPeers && !hasDecryptedAwareness) {
-            console.warn("[Security] Peers detected but encryption failed. Passwords do not match.");
-            setConnectionError("Incorrect password. Unable to decrypt room data.");
+        // This check is for when there are peers, but we can't decrypt their data.
+        if (passcode) {
+          const hasPeers = (providerRef.current.room as any)?.webrtcConns?.size > 0;
+          const awarenessStates = providerRef.current.awareness.getStates();
+          const hasDecryptedAwareness = awarenessStates.size > 1; // More than just our own awareness state
+          
+          if (hasPeers && !hasDecryptedAwareness) {
+              console.warn("[Security] Peers detected but could not decrypt awareness. Passwords likely do not match.");
+              setConnectionError("Incorrect password. Unable to decrypt room data.");
+              if (timeoutId) clearTimeout(timeoutId);
+              clearInterval(checkInterval);
+          }
         }
     }, 2000); 
 
     return () => {
-      clearInterval(checkInterval);
+      if (checkInterval) clearInterval(checkInterval);
+      if (timeoutId) clearTimeout(timeoutId);
       provider.destroy();
       ydoc.destroy();
     };
-  }, [roomId, passcode, userName]); 
+  }, [roomId, passcode, userName, isCreator]); 
 
   // Cursor Helper
   const updateCursor = useCallback((point: {x: number, y: number} | null) => {

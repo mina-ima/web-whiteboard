@@ -14,6 +14,7 @@ interface UserSession {
   userName: string;
   roomId: string;
   passcode: string;
+  isCreator: boolean;
 }
 
 const App: React.FC = () => {
@@ -34,7 +35,7 @@ const App: React.FC = () => {
     addImage, updateImage, deleteImage,
     addFile, updateFile, deleteFile,
     updateCursor
-  } = useWhiteboardStore(session?.roomId || null, session?.passcode || null, session?.userName || '');
+  } = useWhiteboardStore(session?.roomId || null, session?.passcode || null, session?.userName || '', session?.isCreator || false);
 
   // Handle Connection Errors (e.g. Wrong Password)
   useEffect(() => {
@@ -60,7 +61,7 @@ const App: React.FC = () => {
             // Give a small buffer for the password check heuristic to fire if needed
             const timer = setTimeout(() => {
                 setIsVerifying(false);
-            }, 1000);
+            }, 3000); // Wait 3s to allow for heuristic check
             return () => clearTimeout(timer);
         }
     }
@@ -68,7 +69,7 @@ const App: React.FC = () => {
 
   const handleLogin = (userName: string, roomId: string, passcode: string, isCreator: boolean) => {
     setLoginError('');
-    setSession({ userName, roomId, passcode });
+    setSession({ userName, roomId, passcode, isCreator });
     setIsVerifying(true); // Start verification
     if (isCreator) {
         setShowInvite(true);
