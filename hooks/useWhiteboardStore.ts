@@ -148,13 +148,20 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
       awareness.on('update', awarenessUpdateHandler);
 
       authTimeoutId = setTimeout(() => {
-        // After timeout, check if we ever managed to decrypt another peer.
-        if (awareness.getStates().size <= 1) {
-          console.warn(`[Security] Auth timed out. No other users' data could be decrypted.`);
-          setConnectionError("Authentication failed. The room may not exist, or the password may be incorrect.");
+        const peerCount = providerRef.current?.webrtcConns.size || 0;
+        const awarenessCount = awareness.getStates().size;
+
+        console.log(`[Security] Auth timeout check. Peers: ${peerCount}, Awareness States: ${awarenessCount}`);
+
+        // If there are peers but we couldn't decrypt any awareness, it's a failure.
+        if (peerCount > 0 && awarenessCount <= 1) {
+          console.warn(`[Security] Auth failed: Peers are present, but awareness could not be decrypted.`);
+          setConnectionError("Authentication failed: Incorrect password.");
         } else {
-          console.log("[Security] Auth timeout finished, but peers were found just in time.");
+          // Otherwise (no peers, or awareness was decrypted), we consider it a success for now.
+          console.log(`[Security] Auth considered successful (case: empty room or already decrypted).`);
         }
+        
         cleanupAuth();
         setIsAuthenticating(false); // Auth process is over, regardless of outcome
       }, 7000); // 7-second timeout
