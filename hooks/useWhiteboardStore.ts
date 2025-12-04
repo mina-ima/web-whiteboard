@@ -76,14 +76,14 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
 
 
     
-    awarenessRef.current.on('change', (changes: any) => {
-        console.log(`[YJS-AWARENESS] Change: added=${changes.added.length}, updated=${changes.updated.length}, removed=${changes.removed.length}`);
-        const states = Array.from(awarenessRef.current.getStates().entries());
-        const users = states
-            .filter(([clientId, state]: [number, any]) => clientId !== ydoc.clientID && state.user)
-            .map(([clientId, state]: [number, any]) => ({ clientId, user: state.user, cursor: state.cursor }));
-        setRemoteUsers(users);
-    });
+    // awarenessRef.current.on('change', (changes: any) => {
+    //     console.log(`[YJS-AWARENESS] Change: added=${changes.added.length}, updated=${changes.updated.length}, removed=${changes.removed.length}`);
+    //     const states = Array.from(awarenessRef.current.getStates().entries());
+    //     const users = states
+    //         .filter(([clientId, state]: [number, any]) => clientId !== ydoc.clientID && state.user)
+    //         .map(([clientId, state]: [number, any]) => ({ clientId, user: state.user, cursor: state.cursor }));
+    //     setRemoteUsers(users);
+    // });
 
     // --- Data Sync Setup ---
     const yPaths = ydoc.getArray<Path>('paths');
