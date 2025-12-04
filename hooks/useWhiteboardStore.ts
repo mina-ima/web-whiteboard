@@ -55,7 +55,10 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
       internalRoomName,
       ydoc,
       {
-        connect: false // We will connect manually after auth logic is handled
+        connect: false, // We will connect manually after auth logic is handled
+        params: {
+          passcode: passcode || undefined
+        }
       }
     );
     providerRef.current = provider;
