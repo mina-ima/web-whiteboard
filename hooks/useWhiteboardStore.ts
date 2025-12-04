@@ -64,7 +64,10 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
     // --- Event Listeners for Debugging ---
     provider.on('status', ({ connected }: { connected: boolean }) => {
       console.log(`[YJS-EVENT] Connected: ${connected}`);
-      setIsConnected(connected);
+      setIsConnected(connected || false);
+      if (connected) {
+        setIsAuthenticating(false);
+      }
     });
 
     provider.on('synced', ({ synced }: { synced: boolean }) => {
