@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import * as Y from 'yjs';
 import { WebsocketProvider } from 'y-websocket';
+import { Path, StickyNote, BoardImage, BoardFile, UserAwareness } from '../types';
 
 // Y.js Websocket Server URL - to be provided by Cloudflare Workers
 // This will be set via an environment variable in Vercel
@@ -20,7 +21,7 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
   const [isAuthenticating, setIsAuthenticating] = useState(true);
 
   const ydocRef = useRef<Y.Doc | null>(null);
-  const providerRef = useRef<WebrtcProvider | null>(null);
+  const providerRef = useRef<WebsocketProvider | null>(null);
   const awarenessRef = useRef<any>(null);
 
   useEffect(() => {

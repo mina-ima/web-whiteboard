@@ -28,7 +28,7 @@ const App: React.FC = () => {
 
   // Hook into Real-time Store
   const { 
-    paths, notes, images, files, isConnected, peers, remoteUsers, connectionError, isAuthenticating,
+    paths, notes, images, files, isConnected, remoteUsers, connectionError, isAuthenticating,
     addPath, deletePaths, clearBoard,
     addNote, updateNote, deleteNote,
     addImage, updateImage, deleteImage,
@@ -173,7 +173,7 @@ const App: React.FC = () => {
                  <div className="w-px h-3 bg-slate-300"></div>
                  <div className="flex items-center gap-1 text-sm text-slate-600 bg-white/50 px-2 py-1 rounded-md">
                     <UsersIcon className="w-3 h-3" />
-                    <span>{peers.length + 1} オンライン</span> 
+                    <span>{remoteUsers.length + 1} オンライン</span> 
                 </div>
                 {session.passcode && (
                      <div className="flex items-center gap-1 text-xs text-indigo-600 bg-indigo-50 px-2 py-1 rounded-md border border-indigo-100 ml-2">
