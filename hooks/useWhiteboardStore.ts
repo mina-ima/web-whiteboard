@@ -88,6 +88,7 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
     const yFiles = ydoc.getMap<BoardFile>('files');
 
     const syncData = () => {
+        console.log('[YJS-DEBUG] yPaths.toArray():', yPaths.toArray());
         setPaths(yPaths.toArray() as Path[]);
         setNotes(Array.from(yNotes.values()) as StickyNote[]);
         setImages(Array.from(yImages.values()) as BoardImage[]);
