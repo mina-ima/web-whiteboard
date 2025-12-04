@@ -74,9 +74,9 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
     awarenessRef.current = provider.awareness;
 
     // --- Event Listeners for Debugging ---
-    provider.on('status', ({ status }: { status: string }) => {
-      console.log(`[YJS-EVENT] Status: ${status}`);
-      setIsConnected(status === 'connected');
+    provider.on('status', ({ connected }: { connected: boolean }) => {
+      console.log(`[YJS-EVENT] Connected: ${connected}`);
+      setIsConnected(connected);
     });
 
     provider.on('synced', ({ synced }: { synced: boolean }) => {
@@ -104,10 +104,10 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
     const yFiles = ydoc.getMap('files');
 
     const syncData = () => {
-        setPaths(yPaths.toArray());
-        setNotes(Array.from(yNotes.values()));
-        setImages(Array.from(yImages.values()));
-        setFiles(Array.from(yFiles.values()));
+        setPaths(yPaths.toArray() as Path[]);
+        setNotes(Array.from(yNotes.values()) as StickyNote[]);
+        setImages(Array.from(yImages.values()) as BoardImage[]);
+        setFiles(Array.from(yFiles.values()) as BoardFile[]);
     };
     syncData(); // Initial sync
     yPaths.observe(syncData);
@@ -145,7 +145,7 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
       awareness.on('update', awarenessUpdateHandler);
       
       authTimeoutId = setTimeout(() => {
-        const peerCount = providerRef.current?.webrtcConns.size || 0;
+        const peerCount = (providerRef.current as any)?.webrtcConns?.size || 0;
         const awarenessCount = awareness.getStates().size;
         console.log(`[Auth] TIMEOUT CHECK: Peer connections=${peerCount}, Decrypted awareness states=${awarenessCount}`);
 
