@@ -45,6 +45,7 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
 
     const ydoc = new Y.Doc();
     ydocRef.current = ydoc;
+    console.log('[YJS-DEBUG] New Y.Doc() toJSON():', ydoc.toJSON());
 
     const internalRoomName = `gemini-sb-v13-${roomId}`;
     console.log(`[YJS-SETUP] Creating new provider for room: ${internalRoomName}`);
