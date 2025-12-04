@@ -82,10 +82,10 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
     });
 
     // --- Data Sync Setup ---
-    const yPaths = ydoc.getArray('paths');
-    const yNotes = ydoc.getMap('notes');
-    const yImages = ydoc.getMap('images');
-    const yFiles = ydoc.getMap('files');
+    const yPaths = ydoc.getArray<Path>('paths');
+    const yNotes = ydoc.getMap<StickyNote>('notes');
+    const yImages = ydoc.getMap<BoardImage>('images');
+    const yFiles = ydoc.getMap<BoardFile>('files');
 
     const syncData = () => {
         setPaths(yPaths.toArray() as Path[]);
@@ -111,9 +111,9 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
   }, []);
 
   // Mutation Helpers
-  const addPath = useCallback((path: Path) => ydocRef.current?.getArray('paths').push([path]), []);
+  const addPath = useCallback((path: Path) => ydocRef.current?.getArray<Path>('paths').push([path]), []);
   const deletePaths = useCallback((pathIds: string[]) => {
-    const yPaths = ydocRef.current?.getArray('paths');
+    const yPaths = ydocRef.current?.getArray<Path>('paths');
     if (!yPaths) return;
     ydocRef.current?.transact(() => {
       const current = yPaths.toArray() as any[];
@@ -125,7 +125,7 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
 
   const clearBoard = useCallback(() => {
     ydocRef.current?.transact(() => {
-      const p = ydocRef.current?.getArray('paths');
+      const p = ydocRef.current?.getArray<Path>('paths');
       if (p) p.delete(0, p.length);
       ydocRef.current?.getMap('notes').clear();
       ydocRef.current?.getMap('images').clear();
