@@ -57,7 +57,18 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
       password: passcode || null,
       maxConns: 20 + Math.floor(Math.random() * 5),
       filterBcConns: false,
-      peerOpts: {}
+      peerOpts: {
+          config: {
+            iceServers: [
+              { urls: "stun:stun.l.google.com:19302" },
+              { urls: "stun:global.stun.twilio.com:3478" },
+              { urls: "stun:stun1.l.google.com:19302" },
+              { urls: "stun:stun2.l.google.com:19302" },
+              { urls: "stun:stun.services.mozilla.com" },
+              { urls: "stun:stun.xten.com" }
+            ]
+          }
+      }
     });
     providerRef.current = provider;
     awarenessRef.current = provider.awareness;
