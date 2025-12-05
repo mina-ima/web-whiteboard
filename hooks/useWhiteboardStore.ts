@@ -51,8 +51,8 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
     console.log(`[YJS-SETUP] Creating new provider for room: ${internalRoomName}`);
 
     const provider = new WebsocketProvider(
-      Y_WEBSOCKET_SERVER_URL,
-      internalRoomName,
+      `${Y_WEBSOCKET_SERVER_URL}${internalRoomName}`,
+      '', // roomNameはURLに含まれているため、空文字列を渡す
       ydoc,
       {
         connect: false // We will connect manually after auth logic is handled
