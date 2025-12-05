@@ -64,11 +64,14 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
     awarenessRef.current = provider.awareness;
 
     // 接続イベント
-    provider.on('status', ({ connected }: { connected: boolean }) => {
-      console.log(`[YJS] Connected: ${connected}`);
-      setIsConnected(connected);
-      if (connected) setIsAuthenticating(false);
-    });
+    provider.on('status', (event: any) => {
+      console.log('[YJS-EVENT] status:', event);
+      const isConnected = event.status === 'connected';
+      setIsConnected(isConnected);
+      if (isConnected) {
+        setIsAuthenticating(false);
+    }
+  });
 
     provider.on('synced', ({ synced }: { synced: boolean }) => {
       console.log(`[YJS] Synced: ${synced}`);
