@@ -5,7 +5,7 @@ import { Path, StickyNote, BoardImage, BoardFile, UserAwareness } from '../types
 
 // Y.js Websocket Server URL - to be provided by Cloudflare Workers
 // This will be set via an environment variable in Vercel
-const Y_WEBSOCKET_SERVER_URL = import.meta.env.VITE_Y_WEBSOCKET_SERVER_URL || 'ws://localhost:1234';
+const Y_WEBSOCKET_SERVER_URL = 'wss://demos.yjs.dev';
 
 const USER_COLORS = ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#10b981', '#06b6d4', '#3b82f6', '#8b5cf6', '#d946ef', '#f43f5e'];
 
