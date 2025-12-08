@@ -171,6 +171,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onJoin, initialError }
                     placeholder="ルームパスワードを入力"
                   />
                 </div>
+                <p className="text-[10px] text-gray-400 mt-1 ml-1">作成者が設定した場合のみ入力してください。</p>
               </div>
 
               <button
