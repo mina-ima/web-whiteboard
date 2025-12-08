@@ -3,10 +3,12 @@ import * as Y from 'yjs';
 import { WebsocketProvider } from 'y-websocket';
 import { Path, StickyNote, BoardImage, BoardFile, UserAwareness } from '../types';
 
+// デバッグのため、一時的にY.js公式のデモサーバーに切り替え
 // Websocket Server URL（?room= まで含む環境変数）
-const Y_WEBSOCKET_SERVER_URL =
-  import.meta.env.VITE_Y_WEBSOCKET_SERVER_URL ||
-  'ws://localhost:1234/websocket?room=';
+// const Y_WEBSOCKET_SERVER_URL =
+//   import.meta.env.VITE_Y_WEBSOCKET_SERVER_URL ||
+//   'ws://localhost:1234/websocket?room=';
+const Y_WEBSOCKET_SERVER_URL_FOR_DEBUG = 'wss://demos.yjs.dev';
 
 const USER_COLORS = ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#10b981', '#06b6d4', '#3b82f6', '#8b5cf6', '#d946ef', '#f43f5e'];
 
@@ -41,19 +43,19 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
     const ydoc = new Y.Doc();
     ydocRef.current = ydoc;
 
-    const internalRoomName = `${roomId}`;
+    // デバッグ用のルーム名。他のユーザーと衝突しないようにプレフィックスをつける
+    const internalRoomName = `web-whiteboard-debug-${roomId}`;
 
-    // URL生成（room と passcode を URL パラメータに付加）
-    let wsUrl = `${Y_WEBSOCKET_SERVER_URL}${internalRoomName}`;
-    if (passcode) {
-      wsUrl += `&passcode=${passcode}`;
-    }
-
-    console.log('[YJS-SETUP] WS URL:', wsUrl);
+    // URL生成ロジックをデバッグ用に変更
+    // let wsUrl = `${Y_WEBSOCKET_SERVER_URL}${internalRoomName}`;
+    // if (passcode) {
+    //   wsUrl += `&passcode=${passcode}`;
+    // }
+    // console.log('[YJS-SETUP] WS URL:', wsUrl);
 
     const provider = new WebsocketProvider(
-      wsUrl,
-      '',           // roomName は URL に含めるため空文字
+      Y_WEBSOCKET_SERVER_URL_FOR_DEBUG,
+      internalRoomName, // roomNameを第2引数として渡す
       ydoc,
       {
         connect: false  // connect は後で手動で実行
