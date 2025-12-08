@@ -8,7 +8,7 @@ import { Path, StickyNote, BoardImage, BoardFile, UserAwareness } from '../types
 // const Y_WEBSOCKET_SERVER_URL =
 //   import.meta.env.VITE_Y_WEBSOCKET_SERVER_URL ||
 //   'ws://localhost:1234/websocket?room=';
-const Y_WEBSOCKET_SERVER_URL_FOR_DEBUG = 'wss://demos.yjs.dev';
+const Y_WEBSOCKET_SERVER_URL_FOR_DEBUG = 'wss://web-whiteboard-signaling.minamidenshi.workers.dev/websocket';
 
 const USER_COLORS = ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#10b981', '#06b6d4', '#3b82f6', '#8b5cf6', '#d946ef', '#f43f5e'];
 
@@ -58,7 +58,8 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
       internalRoomName, // roomNameを第2引数として渡す
       ydoc,
       {
-        connect: false  // connect は後で手動で実行
+        connect: false, // connect は後で手動で実行
+        params: { passcode: passcode || '' },
       }
     );
 
