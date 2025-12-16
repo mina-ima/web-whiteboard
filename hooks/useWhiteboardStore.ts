@@ -53,22 +53,23 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
     // }
     // console.log('[YJS-SETUP] WS URL:', wsUrl);
 
-    const providerOptions: { [key: string]: any } = {
-      connect: false,
-      params: {
-        room: internalRoomName,
-      },
-    };
-
+    // y-websocketのURL結合の癖を逆手に取り、URLを完全に手動で構築する
+    const queryParams = new URLSearchParams({ room: internalRoomName });
     if (passcode) {
-      providerOptions.params.passcode = passcode;
+      queryParams.set('passcode', passcode);
     }
+    // "serverUrl + '/' + roomName" の結合で "wss://...dev/?room=..." となるように、
+    // roomNameとしてクエリ文字列そのものを渡す
+    const roomNameAsQuery = `?${queryParams.toString()}`;
 
     const provider = new WebsocketProvider(
       Y_WEBSOCKET_SERVER_URL_FOR_DEBUG,
-      '', // Use empty path to prevent double slash in URL
+      roomNameAsQuery,
       ydoc,
-      providerOptions
+      {
+        connect: false,
+        params: {}, // paramsは手動で構築したので空にする
+      }
     );
 
     providerRef.current = provider;
