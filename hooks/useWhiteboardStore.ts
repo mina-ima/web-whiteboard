@@ -53,14 +53,22 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
     // }
     // console.log('[YJS-SETUP] WS URL:', wsUrl);
 
+    const providerOptions: { [key: string]: any } = {
+      connect: false,
+      params: {
+        room: internalRoomName,
+      },
+    };
+
+    if (passcode) {
+      providerOptions.params.passcode = passcode;
+    }
+
     const provider = new WebsocketProvider(
       Y_WEBSOCKET_SERVER_URL_FOR_DEBUG,
-      internalRoomName, // roomNameを第2引数として渡す
+      '/', // Use root path
       ydoc,
-      {
-        connect: false, // connect は後で手動で実行
-        params: { passcode: passcode || '' },
-      }
+      providerOptions
     );
 
     providerRef.current = provider;
