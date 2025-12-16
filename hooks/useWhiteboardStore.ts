@@ -66,7 +66,7 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
 
     const provider = new WebsocketProvider(
       Y_WEBSOCKET_SERVER_URL_FOR_DEBUG,
-      '/', // Use root path
+      '', // Use empty path to prevent double slash in URL
       ydoc,
       providerOptions
     );
