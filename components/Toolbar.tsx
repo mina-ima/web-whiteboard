@@ -195,7 +195,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         type="file" 
         id="file-upload" 
         accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.ppt,.pptx,.txt"
-        className="hidden" 
+        className="sr-only" 
         onChange={onFileUpload}
       />
       <button
@@ -292,7 +292,6 @@ export const Toolbar: React.FC<ToolbarProps> = ({
               htmlFor="file-upload" 
               className={`cursor-pointer block ${buttonClass(ToolType.IMAGE)}`}
               title="画像またはファイルをアップロード"
-              onClick={() => handleToolSelect(ToolType.IMAGE)}
               role="button"
               aria-pressed={currentTool === ToolType.IMAGE}
             >
@@ -380,7 +379,6 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                   htmlFor="file-upload"
                   className={`cursor-pointer block ${buttonClass(ToolType.IMAGE, true)}`}
                   title="画像またはファイルをアップロード"
-                  onClick={() => handleToolSelect(ToolType.IMAGE)}
                   role="button"
                   aria-pressed={currentTool === ToolType.IMAGE}
                 >
