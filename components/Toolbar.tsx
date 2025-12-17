@@ -165,16 +165,22 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     },
   };
 
-  const buttonClass = (tool: ToolType) => {
+  const buttonClass = (tool: ToolType, compact = false) => {
     const config = toolConfig[tool];
-    return `p-3 rounded-xl transition-all duration-200 border ${currentTool === tool ? config.active : config.idle}`;
+    const sizeClass = compact
+      ? 'w-10 h-10 p-2 flex items-center justify-center overflow-hidden'
+      : 'p-3';
+    const stateClass = currentTool === tool ? config.active : config.idle;
+    const compactOverrides = compact ? 'scale-100 shadow-sm' : '';
+    return `${sizeClass} rounded-xl transition-all duration-200 border ${stateClass} ${compactOverrides}`;
   };
 
-  const renderToolIcon = (tool: ToolType) => {
+  const renderToolIcon = (tool: ToolType, size: 'sm' | 'md' = 'md') => {
     const config = toolConfig[tool];
     const IconComponent = currentTool === tool ? config.ActiveIcon : config.Icon;
     const iconClass = currentTool === tool ? config.activeIconClass : config.iconClass;
-    return <IconComponent className={`w-6 h-6 ${iconClass}`} />;
+    const sizeClass = size === 'sm' ? 'w-5 h-5' : 'w-6 h-6';
+    return <IconComponent className={`${sizeClass} ${iconClass}`} />;
   };
 
   return (
@@ -340,45 +346,45 @@ export const Toolbar: React.FC<ToolbarProps> = ({
               <div className="grid grid-cols-5 gap-2">
                 <button
                   onClick={() => handleToolSelect(ToolType.SELECT)}
-                  className={buttonClass(ToolType.SELECT)}
+                  className={buttonClass(ToolType.SELECT, true)}
                   title="選択・移動"
                   aria-pressed={currentTool === ToolType.SELECT}
                 >
-                  {renderToolIcon(ToolType.SELECT)}
+                  {renderToolIcon(ToolType.SELECT, 'sm')}
                 </button>
                 <button
                   onClick={() => handleToolSelect(ToolType.PEN)}
-                  className={buttonClass(ToolType.PEN)}
+                  className={buttonClass(ToolType.PEN, true)}
                   title="フリーハンドペン"
                   aria-pressed={currentTool === ToolType.PEN}
                 >
-                  {renderToolIcon(ToolType.PEN)}
+                  {renderToolIcon(ToolType.PEN, 'sm')}
                 </button>
                 <button
                   onClick={() => handleToolSelect(ToolType.ERASER)}
-                  className={buttonClass(ToolType.ERASER)}
+                  className={buttonClass(ToolType.ERASER, true)}
                   title="消しゴム"
                   aria-pressed={currentTool === ToolType.ERASER}
                 >
-                  {renderToolIcon(ToolType.ERASER)}
+                  {renderToolIcon(ToolType.ERASER, 'sm')}
                 </button>
                 <button
                   onClick={() => handleToolSelect(ToolType.NOTE)}
-                  className={buttonClass(ToolType.NOTE)}
+                  className={buttonClass(ToolType.NOTE, true)}
                   title="付箋を追加"
                   aria-pressed={currentTool === ToolType.NOTE}
                 >
-                  {renderToolIcon(ToolType.NOTE)}
+                  {renderToolIcon(ToolType.NOTE, 'sm')}
                 </button>
                 <label
                   htmlFor="file-upload"
-                  className={`cursor-pointer block ${buttonClass(ToolType.IMAGE)}`}
+                  className={`cursor-pointer block ${buttonClass(ToolType.IMAGE, true)}`}
                   title="画像またはファイルをアップロード"
                   onClick={() => handleToolSelect(ToolType.IMAGE)}
                   role="button"
                   aria-pressed={currentTool === ToolType.IMAGE}
                 >
-                  {renderToolIcon(ToolType.IMAGE)}
+                  {renderToolIcon(ToolType.IMAGE, 'sm')}
                 </label>
               </div>
 
