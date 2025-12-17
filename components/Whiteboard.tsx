@@ -317,20 +317,19 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
   const handlePointerDown = (e: React.PointerEvent) => {
     const pos = getPos(e);
 
-    // If using Pen/Eraser, we want to capture on the container immediately
-    if (tool === ToolType.PEN || tool === ToolType.ERASER) {
-       if (containerRef.current) {
-         containerRef.current.setPointerCapture(e.pointerId);
-       }
-    }
-
     if (tool === ToolType.ERASER) {
       if (!window.confirm('削除してもよろしいですか？')) {
         return;
       }
+      if (containerRef.current) {
+        containerRef.current.setPointerCapture(e.pointerId);
+      }
       eraseAt(pos);
       isDrawingRef.current = true;
     } else if (tool === ToolType.PEN) {
+      if (containerRef.current) {
+        containerRef.current.setPointerCapture(e.pointerId);
+      }
       isDrawingRef.current = true;
       currentPathPointsRef.current = [pos];
     } else if (tool === ToolType.NOTE) {

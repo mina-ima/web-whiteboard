@@ -185,6 +185,13 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       }`}
       style={position ? { left: position.x, top: position.y } : undefined}
     >
+      <input 
+        type="file" 
+        id="file-upload" 
+        accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.ppt,.pptx,.txt"
+        className="hidden" 
+        onChange={onFileUpload}
+      />
       <button
         className="p-2 rounded-xl bg-white text-slate-500 hover:bg-slate-50 border border-slate-200 shadow-sm cursor-move"
         title="ツールバーを移動"
@@ -275,13 +282,6 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           </button>
 
           <div className="relative">
-            <input 
-              type="file" 
-              id="file-upload" 
-              accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.ppt,.pptx,.txt"
-              className="hidden" 
-              onChange={onFileUpload}
-            />
             <label 
               htmlFor="file-upload" 
               className={`cursor-pointer block ${buttonClass(ToolType.IMAGE)}`}
