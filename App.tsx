@@ -7,8 +7,11 @@ import { LoginScreen } from './components/LoginScreen';
 import { InviteModal } from './components/InviteModal';
 import { ToolType, StickyNote, BoardImage, BoardFile, STICKY_COLORS, PEN_STYLES } from './types';
 import html2canvas from 'html2canvas';
-import { UserIcon, SignalIcon, SignalSlashIcon, UsersIcon, ShieldCheckIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
+import { UserIcon, SignalIcon, SignalSlashIcon, UsersIcon, ShieldCheckIcon, ArrowPathIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 import { useWhiteboardStore } from './hooks/useWhiteboardStore';
+import JSZip from 'jszip';
+import { saveAs } from 'file-saver';
+import { jsPDF } from 'jspdf';
 
 interface UserSession {
   userName: string;
@@ -25,6 +28,7 @@ const App: React.FC = () => {
   const [tool, setTool] = useState<ToolType>(ToolType.PEN);
   const [penStyle, setPenStyle] = useState(PEN_STYLES[0]);
   const [isAiOpen, setIsAiOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const appContainerRef = useRef<HTMLDivElement>(null);
 
   // Hook into Real-time Store
@@ -127,6 +131,87 @@ const App: React.FC = () => {
     return '';
   };
 
+  const dataUrlToUint8Array = (dataUrl: string) => {
+    const base64 = dataUrl.split(',')[1] || '';
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i += 1) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return bytes;
+  };
+
+  const ensureUniqueName = (existing: Set<string>, name: string) => {
+    if (!existing.has(name)) {
+      existing.add(name);
+      return name;
+    }
+    const dotIndex = name.lastIndexOf('.');
+    const base = dotIndex > 0 ? name.slice(0, dotIndex) : name;
+    const ext = dotIndex > 0 ? name.slice(dotIndex) : '';
+    let counter = 2;
+    let nextName = `${base} (${counter})${ext}`;
+    while (existing.has(nextName)) {
+      counter += 1;
+      nextName = `${base} (${counter})${ext}`;
+    }
+    existing.add(nextName);
+    return nextName;
+  };
+
+  const handleExportZip = async () => {
+    if (isExporting) return;
+    setIsExporting(true);
+    try {
+      const zip = new JSZip();
+      const existingNames = new Set<string>();
+
+      const boardImage = await captureBoard();
+      if (boardImage) {
+        const img = new Image();
+        img.src = boardImage;
+        await img.decode();
+        const orientation = img.width >= img.height ? 'landscape' : 'portrait';
+        const pdf = new jsPDF({
+          orientation,
+          unit: 'pt',
+          format: [img.width, img.height],
+        });
+        pdf.addImage(boardImage, 'PNG', 0, 0, img.width, img.height);
+        zip.file('board.pdf', pdf.output('blob'));
+        existingNames.add('board.pdf');
+      }
+
+      images.forEach((image, index) => {
+        if (!image.src) return;
+        const name = ensureUniqueName(
+          existingNames,
+          image.title || `image-${index + 1}.png`
+        );
+        zip.file(name, dataUrlToUint8Array(image.src));
+      });
+
+      files.forEach((file, index) => {
+        if (!file.data) return;
+        const name = ensureUniqueName(
+          existingNames,
+          file.fileName || `file-${index + 1}`
+        );
+        zip.file(name, dataUrlToUint8Array(file.data));
+      });
+
+      const blob = await zip.generateAsync({ type: 'blob' });
+      const dateTag = new Date().toISOString().slice(0, 10);
+      const roomTag = session?.roomId ? `-${session.roomId}` : '';
+      saveAs(blob, `whiteboard${roomTag}-${dateTag}.zip`);
+    } catch (error) {
+      console.error(error);
+      window.alert('エクスポートに失敗しました。もう一度お試しください。');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   if (!session) {
     return <LoginScreen onJoin={handleLogin} initialError={loginError} />;
   }
@@ -183,6 +268,23 @@ const App: React.FC = () => {
                 </div>
             )}
         </div>
+      </div>
+
+      <div className="absolute top-2 right-2 z-30 pointer-events-auto select-none">
+        <button
+          type="button"
+          onClick={handleExportZip}
+          disabled={isExporting}
+          className={`flex items-center gap-1.5 bg-white/90 backdrop-blur px-3 py-1.5 rounded-full border text-xs font-medium shadow-sm transition-colors ${
+            isExporting
+              ? 'text-slate-400 border-slate-200'
+              : 'text-slate-700 border-slate-200 hover:bg-slate-50'
+          }`}
+          title="ボードPDFと添付ファイルをZIPで保存"
+        >
+          <ArrowDownTrayIcon className="w-4 h-4" />
+          <span>{isExporting ? '書き出し中...' : 'ZIP保存'}</span>
+        </button>
       </div>
 
       {showInvite && (
