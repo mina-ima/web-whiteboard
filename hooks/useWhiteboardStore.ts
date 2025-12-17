@@ -247,6 +247,8 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
       }
     };
 
+    ensureLocalUser();
+
     provider.on('synced', ({ synced }: { synced: boolean }) => {
       if (!isActive) return;
       console.log(`[YJS] Synced: ${synced}`);
