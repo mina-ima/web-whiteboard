@@ -62,6 +62,14 @@ const getOrCreateUserId = () => {
   return id;
 };
 
+const hashToColorIndex = (value: string, length: number) => {
+  let hash = 0;
+  for (let i = 0; i < value.length; i += 1) {
+    hash = (hash * 31 + value.charCodeAt(i)) | 0;
+  }
+  return Math.abs(hash) % length;
+};
+
 export const useWhiteboardStore = (roomId: string | null, passcode: string | null, userName: string, isCreator: boolean) => {
   const [paths, setPaths] = useState<Path[]>([]);
   const [notes, setNotes] = useState<StickyNote[]>([]);
@@ -190,7 +198,10 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
         uniqueOrderIds.push(userId);
         order = uniqueOrderIds.length - 1;
       }
-      const color = USER_COLORS[order % USER_COLORS.length];
+      const color =
+        order >= 0
+          ? USER_COLORS[order % USER_COLORS.length]
+          : USER_COLORS[hashToColorIndex(userId, USER_COLORS.length)];
 
       const existing = yUsers.get(userId);
       if (existing) {
@@ -303,7 +314,9 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
           const resolvedColor =
             derivedOrder !== undefined
               ? USER_COLORS[derivedOrder % USER_COLORS.length]
-              : owner?.color || note.authorColor || note.color;
+              : note.authorId
+                ? USER_COLORS[hashToColorIndex(note.authorId, USER_COLORS.length)]
+                : owner?.color || note.authorColor || note.color;
           const resolvedName = owner?.name || note.authorName;
           const resolvedAuthorColor = resolvedColor;
           const base = {
@@ -419,6 +432,9 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
       if (!ydoc) return;
       const localUser = localUserRef.current;
       const localUserId = localUser?.id || localUserIdRef.current || note.authorId;
+      if (!localUserIdRef.current) {
+        localUserIdRef.current = getOrCreateUserId();
+      }
       const fallbackColor = note.color || USER_COLORS[0];
       const nextNote: StickyNote = {
         ...note,
