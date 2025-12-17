@@ -431,17 +431,21 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
       const ydoc = ydocRef.current;
       if (!ydoc) return;
       const localUser = localUserRef.current;
-      const localUserId = localUser?.id || localUserIdRef.current || note.authorId;
       if (!localUserIdRef.current) {
         localUserIdRef.current = getOrCreateUserId();
       }
-      const fallbackColor = note.color || USER_COLORS[0];
+      const localUserId =
+        localUser?.id || localUserIdRef.current || note.authorId;
+      const hashedColor = localUserId
+        ? USER_COLORS[hashToColorIndex(localUserId, USER_COLORS.length)]
+        : USER_COLORS[0];
+      const fallbackColor = note.color || hashedColor;
       const nextNote: StickyNote = {
         ...note,
-        color: localUser?.color || fallbackColor,
+        color: localUser?.color || hashedColor,
         authorId: localUserId,
         authorName: localUser?.name || note.authorName || userName,
-        authorColor: localUser?.color || note.authorColor || fallbackColor,
+        authorColor: localUser?.color || note.authorColor || hashedColor,
       };
       ydoc.getMap<StickyNote>('notes').set(note.id, nextNote);
       ydoc.getMap<NoteMeta>('notes_meta').set(note.id, {
