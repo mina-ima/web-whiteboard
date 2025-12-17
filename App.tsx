@@ -100,12 +100,12 @@ const App: React.FC = () => {
     ideas.forEach((idea, index) => {
       const note: StickyNote = {
         id: uuidv4(),
-        x: 150 + (index % 3) * 220,
-        y: 150 + Math.floor(index / 3) * 220,
+        x: 140 + (index % 4) * 120,
+        y: 140 + Math.floor(index / 4) * 120,
         text: idea,
         color: STICKY_COLORS[index % STICKY_COLORS.length],
-        width: 200,
-        height: 200
+        width: 100,
+        height: 100
       };
       addNote(note);
     });
@@ -221,7 +221,10 @@ const App: React.FC = () => {
         currentTool={tool}
         setTool={setTool}
         onClear={handleClear}
-        onAiToggle={() => setIsAiOpen(true)}
+        onAiToggle={() => {
+          setTool(ToolType.NOTE);
+          setIsAiOpen(true);
+        }}
         isAiOpen={isAiOpen}
         onFileUpload={handleFileUpload}
       />

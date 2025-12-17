@@ -335,12 +335,12 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
       // Add note
       const newNote: StickyNote = {
         id: uuidv4(),
-        x: pos.x - 75,
-        y: pos.y - 75,
+        x: pos.x - 50,
+        y: pos.y - 50,
         text: '',
         color: '#fef3c7', 
-        width: 200,
-        height: 200
+        width: 100,
+        height: 100
       };
       onNoteAdd(newNote);
     } else if (isSelectTool) {
@@ -540,9 +540,14 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
     setResizeItem({ type, id, startX: pos.x, startY: pos.y, startWidth: w, startHeight: h });
   };
 
-  const updateNoteText = (id: string, text: string) => {
+  const updateNoteText = (id: string, text: string, contentHeight?: number) => {
     const item = notes.find(n => n.id === id);
-    if(item) onNoteUpdate({ ...item, text });
+    if (item) {
+      const nextHeight = contentHeight
+        ? Math.max(item.height, contentHeight + 16)
+        : item.height;
+      onNoteUpdate({ ...item, text, height: nextHeight });
+    }
   };
 
   const selectedPaths = selectedPathIds
@@ -761,7 +766,7 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
             className={`w-full h-full bg-transparent resize-none outline-none text-gray-800 font-medium placeholder-gray-400/70 select-text cursor-text ${itemPointerEvents}`}
             placeholder="Type here..."
             value={note.text}
-            onChange={(e) => updateNoteText(note.id, e.target.value)}
+            onChange={(e) => updateNoteText(note.id, e.target.value, e.currentTarget.scrollHeight)}
             onPointerDown={(e) => e.stopPropagation()} 
           />
           {isSelectTool && (

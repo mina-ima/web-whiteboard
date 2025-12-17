@@ -1,10 +1,13 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ToolType } from '../types';
 import {
   CursorArrowRaysIcon as CursorArrowRaysIconOutline,
   PencilIcon as PencilIconOutline,
   DocumentTextIcon as DocumentTextIconOutline,
   PhotoIcon as PhotoIconOutline,
+  Bars2Icon,
+  ChevronUpIcon,
+  ChevronDownIcon,
   TrashIcon,
   SparklesIcon,
   BackspaceIcon as BackspaceIconOutline,
@@ -34,6 +37,58 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   isAiOpen,
   onFileUpload
 }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const dragOffsetRef = useRef<{ x: number; y: number } | null>(null);
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [position, setPosition] = useState<{ x: number; y: number } | null>(null);
+
+  const clamp = (value: number, min: number, max: number) =>
+    Math.min(Math.max(value, min), max);
+
+  useEffect(() => {
+    if (!position || !containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const nextX = clamp(position.x, 8, window.innerWidth - rect.width - 8);
+    const nextY = clamp(position.y, 8, window.innerHeight - rect.height - 8);
+    if (nextX !== position.x || nextY !== position.y) {
+      setPosition({ x: nextX, y: nextY });
+    }
+  }, [position]);
+
+  const handleDragStart = (e: React.PointerEvent) => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const base = position ?? { x: rect.left, y: rect.top };
+    if (!position) {
+      setPosition(base);
+    }
+    dragOffsetRef.current = { x: e.clientX - base.x, y: e.clientY - base.y };
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+  };
+
+  const handleDragMove = (e: React.PointerEvent) => {
+    if (!dragOffsetRef.current || !containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const nextX = clamp(
+      e.clientX - dragOffsetRef.current.x,
+      8,
+      window.innerWidth - rect.width - 8
+    );
+    const nextY = clamp(
+      e.clientY - dragOffsetRef.current.y,
+      8,
+      window.innerHeight - rect.height - 8
+    );
+    setPosition({ x: nextX, y: nextY });
+  };
+
+  const handleDragEnd = (e: React.PointerEvent) => {
+    dragOffsetRef.current = null;
+    if ((e.currentTarget as HTMLElement).hasPointerCapture(e.pointerId)) {
+      (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+    }
+  };
+
   const toolConfig: Record<
     ToolType,
     {
@@ -100,72 +155,104 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   };
 
   return (
-    <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 flex items-center gap-3 p-2 bg-white/90 backdrop-blur-md rounded-2xl shadow-2xl border border-gray-200 z-[60]">
-      <button 
-        onClick={() => setTool(ToolType.SELECT)} 
-        className={buttonClass(ToolType.SELECT)}
-        title="選択・移動"
-        aria-pressed={currentTool === ToolType.SELECT}
+    <div
+      ref={containerRef}
+      className={`fixed z-[60] flex items-center gap-2 p-2 bg-white/90 backdrop-blur-md rounded-2xl shadow-2xl border border-gray-200 ${
+        position ? '' : 'bottom-6 left-1/2 -translate-x-1/2'
+      }`}
+      style={position ? { left: position.x, top: position.y } : undefined}
+    >
+      <button
+        className="p-2 rounded-xl bg-white text-slate-500 hover:bg-slate-50 border border-slate-200 shadow-sm cursor-move"
+        title="ツールバーを移動"
+        onPointerDown={handleDragStart}
+        onPointerMove={handleDragMove}
+        onPointerUp={handleDragEnd}
       >
-        {renderToolIcon(ToolType.SELECT)}
-      </button>
-      
-      <button 
-        onClick={() => setTool(ToolType.PEN)} 
-        className={buttonClass(ToolType.PEN)}
-        title="フリーハンドペン"
-        aria-pressed={currentTool === ToolType.PEN}
-      >
-        {renderToolIcon(ToolType.PEN)}
+        <Bars2Icon className="w-5 h-5" />
       </button>
 
-      <button 
-        onClick={() => setTool(ToolType.ERASER)} 
-        className={buttonClass(ToolType.ERASER)}
-        title="消しゴム"
-        aria-pressed={currentTool === ToolType.ERASER}
+      <button
+        className="p-2 rounded-xl bg-white text-slate-500 hover:bg-slate-50 border border-slate-200 shadow-sm"
+        title={isCollapsed ? 'ツールバーを展開' : 'ツールバーを折りたたむ'}
+        onClick={() => setIsCollapsed((prev) => !prev)}
       >
-        {renderToolIcon(ToolType.ERASER)}
+        {isCollapsed ? (
+          <ChevronUpIcon className="w-5 h-5" />
+        ) : (
+          <ChevronDownIcon className="w-5 h-5" />
+        )}
       </button>
 
-      <button 
-        onClick={() => setTool(ToolType.NOTE)} 
-        className={buttonClass(ToolType.NOTE)}
-        title="付箋を追加"
-        aria-pressed={currentTool === ToolType.NOTE}
-      >
-        {renderToolIcon(ToolType.NOTE)}
-      </button>
+      {!isCollapsed && (
+        <>
+          <button 
+            onClick={() => setTool(ToolType.SELECT)} 
+            className={buttonClass(ToolType.SELECT)}
+            title="選択・移動"
+            aria-pressed={currentTool === ToolType.SELECT}
+          >
+            {renderToolIcon(ToolType.SELECT)}
+          </button>
+          
+          <button 
+            onClick={() => setTool(ToolType.PEN)} 
+            className={buttonClass(ToolType.PEN)}
+            title="フリーハンドペン"
+            aria-pressed={currentTool === ToolType.PEN}
+          >
+            {renderToolIcon(ToolType.PEN)}
+          </button>
 
-      <div className="relative">
-        <input 
-          type="file" 
-          id="file-upload" 
-          accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.ppt,.pptx,.txt"
-          className="hidden" 
-          onChange={onFileUpload}
-        />
-        <label 
-          htmlFor="file-upload" 
-          className={`cursor-pointer block ${buttonClass(ToolType.IMAGE)}`}
-          title="画像またはファイルをアップロード"
-          onClick={() => setTool(ToolType.IMAGE)}
-          role="button"
-          aria-pressed={currentTool === ToolType.IMAGE}
-        >
-          {renderToolIcon(ToolType.IMAGE)}
-        </label>
-      </div>
+          <button 
+            onClick={() => setTool(ToolType.ERASER)} 
+            className={buttonClass(ToolType.ERASER)}
+            title="消しゴム"
+            aria-pressed={currentTool === ToolType.ERASER}
+          >
+            {renderToolIcon(ToolType.ERASER)}
+          </button>
 
-      <div className="w-px h-8 bg-gray-300 mx-1"></div>
+          <button 
+            onClick={() => setTool(ToolType.NOTE)} 
+            className={buttonClass(ToolType.NOTE)}
+            title="付箋を追加"
+            aria-pressed={currentTool === ToolType.NOTE}
+          >
+            {renderToolIcon(ToolType.NOTE)}
+          </button>
 
-      <button 
-        onClick={onClear} 
-        className="p-3 rounded-xl bg-white text-red-500 hover:bg-red-50 border border-gray-200 shadow-sm transition-colors"
-        title="ボードをクリア"
-      >
-        <TrashIcon className="w-6 h-6" />
-      </button>
+          <div className="relative">
+            <input 
+              type="file" 
+              id="file-upload" 
+              accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.ppt,.pptx,.txt"
+              className="hidden" 
+              onChange={onFileUpload}
+            />
+            <label 
+              htmlFor="file-upload" 
+              className={`cursor-pointer block ${buttonClass(ToolType.IMAGE)}`}
+              title="画像またはファイルをアップロード"
+              onClick={() => setTool(ToolType.IMAGE)}
+              role="button"
+              aria-pressed={currentTool === ToolType.IMAGE}
+            >
+              {renderToolIcon(ToolType.IMAGE)}
+            </label>
+          </div>
+
+          <div className="w-px h-8 bg-gray-300 mx-1"></div>
+
+          <button 
+            onClick={onClear} 
+            className="p-3 rounded-xl bg-white text-red-500 hover:bg-red-50 border border-gray-200 shadow-sm transition-colors"
+            title="ボードをクリア"
+          >
+            <TrashIcon className="w-6 h-6" />
+          </button>
+        </>
+      )}
 
       <button 
         onClick={onAiToggle} 
