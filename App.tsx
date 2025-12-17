@@ -5,7 +5,7 @@ import { Toolbar } from './components/Toolbar';
 import { AiSidebar } from './components/AiSidebar';
 import { LoginScreen } from './components/LoginScreen';
 import { InviteModal } from './components/InviteModal';
-import { ToolType, StickyNote, BoardImage, BoardFile, STICKY_COLORS } from './types';
+import { ToolType, StickyNote, BoardImage, BoardFile, STICKY_COLORS, PEN_STYLES } from './types';
 import html2canvas from 'html2canvas';
 import { UserIcon, SignalIcon, SignalSlashIcon, UsersIcon, ShieldCheckIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import { useWhiteboardStore } from './hooks/useWhiteboardStore';
@@ -23,6 +23,7 @@ const App: React.FC = () => {
   const [loginError, setLoginError] = useState<string>('');
   
   const [tool, setTool] = useState<ToolType>(ToolType.PEN);
+  const [penStyle, setPenStyle] = useState(PEN_STYLES[0]);
   const [isAiOpen, setIsAiOpen] = useState(false);
   const appContainerRef = useRef<HTMLDivElement>(null);
 
@@ -103,7 +104,7 @@ const App: React.FC = () => {
         x: 120 + (index % 3) * 220,
         y: 140 + Math.floor(index / 3) * 90,
         text: idea,
-        color: STICKY_COLORS[index % STICKY_COLORS.length],
+        color: STICKY_COLORS[0],
         width: 200,
         height: 50
       };
@@ -215,6 +216,7 @@ const App: React.FC = () => {
         onFileDelete={deleteFile}
 
         onCursorMove={updateCursor}
+        penStyle={penStyle}
       />
 
       <Toolbar 
@@ -227,6 +229,8 @@ const App: React.FC = () => {
         }}
         isAiOpen={isAiOpen}
         onFileUpload={handleFileUpload}
+        penStyle={penStyle}
+        setPenStyle={setPenStyle}
       />
 
       <AiSidebar 

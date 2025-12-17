@@ -37,12 +37,28 @@ const getOrCreateUserId = () => {
     return `user-${Math.random().toString(36).slice(2)}`;
   }
   const key = 'web-whiteboard-user-id';
-  const existing = window.localStorage.getItem(key);
+  let storage: Storage | null = null;
+  try {
+    storage = window.sessionStorage;
+  } catch {
+    storage = null;
+  }
+  if (!storage) {
+    try {
+      storage = window.localStorage;
+    } catch {
+      storage = null;
+    }
+  }
+  if (!storage) {
+    return `user-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  }
+  const existing = storage.getItem(key);
   if (existing) return existing;
   const id = (crypto && 'randomUUID' in crypto)
     ? crypto.randomUUID()
     : `user-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  window.localStorage.setItem(key, id);
+  storage.setItem(key, id);
   return id;
 };
 
@@ -195,6 +211,23 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
           color: localUserRef.current.color,
         });
       }
+
+      if (localUserRef.current && ydocRef.current) {
+        const yNotes = ydocRef.current.getMap<StickyNote>('notes');
+        yNotes.forEach((note, id) => {
+          if (note.authorId === localUserRef.current?.id) {
+            const nextColor = localUserRef.current.color;
+            if (note.color !== nextColor || note.authorColor !== nextColor || note.authorName !== localUserRef.current.name) {
+              yNotes.set(id, {
+                ...note,
+                color: nextColor,
+                authorColor: nextColor,
+                authorName: localUserRef.current.name,
+              });
+            }
+          }
+        });
+      }
     };
 
     provider.on('synced', ({ synced }: { synced: boolean }) => {
@@ -342,11 +375,12 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
       const ydoc = ydocRef.current;
       if (!ydoc) return;
       const localUser = localUserRef.current;
+      const localUserId = localUser?.id || localUserIdRef.current || note.authorId;
       const fallbackColor = note.color || USER_COLORS[0];
       const nextNote: StickyNote = {
         ...note,
         color: localUser?.color || fallbackColor,
-        authorId: localUser?.id || note.authorId,
+        authorId: localUserId,
         authorName: localUser?.name || note.authorName || userName,
         authorColor: localUser?.color || note.authorColor || fallbackColor,
       };

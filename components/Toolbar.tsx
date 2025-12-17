@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ToolType } from '../types';
+import { ToolType, PenStyle, PEN_STYLES } from '../types';
 import {
   CursorArrowRaysIcon as CursorArrowRaysIconOutline,
   PencilIcon as PencilIconOutline,
@@ -27,6 +27,8 @@ interface ToolbarProps {
   onAiToggle: () => void;
   isAiOpen: boolean;
   onFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  penStyle: PenStyle;
+  setPenStyle: (style: PenStyle) => void;
 }
 
 export const Toolbar: React.FC<ToolbarProps> = ({ 
@@ -35,7 +37,9 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onClear, 
   onAiToggle, 
   isAiOpen,
-  onFileUpload
+  onFileUpload,
+  penStyle,
+  setPenStyle
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const dragOffsetRef = useRef<{ x: number; y: number } | null>(null);
@@ -203,6 +207,33 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           >
             {renderToolIcon(ToolType.PEN)}
           </button>
+
+          {currentTool === ToolType.PEN && (
+            <div className="flex items-center gap-1 px-1">
+              {PEN_STYLES.map((style) => {
+                const isActive = penStyle.id === style.id;
+                return (
+                  <button
+                    key={style.id}
+                    type="button"
+                    title={`${style.label}ペン`}
+                    onClick={() => {
+                      setPenStyle(style);
+                      setTool(ToolType.PEN);
+                    }}
+                    className={`w-6 h-6 rounded-full border transition-all ${
+                      isActive
+                        ? 'ring-2 ring-slate-400 border-slate-400 shadow-sm'
+                        : 'border-slate-200 hover:shadow-sm'
+                    }`}
+                    style={{ backgroundColor: style.color }}
+                  >
+                    <span className="sr-only">{style.label}ペン</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
           <button 
             onClick={() => setTool(ToolType.ERASER)} 

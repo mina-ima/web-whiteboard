@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { Path, Point, ToolType, StickyNote, BoardImage, BoardFile, UserAwareness } from '../types';
+import { Path, Point, ToolType, StickyNote, BoardImage, BoardFile, UserAwareness, PenStyle } from '../types';
 import { 
   XMarkIcon, 
   ArrowsPointingOutIcon, 
@@ -36,6 +36,7 @@ interface WhiteboardProps {
   onFileDelete: (id: string) => void;
 
   onCursorMove: (point: Point | null) => void;
+  penStyle: PenStyle;
 }
 
 interface Bounds {
@@ -58,7 +59,8 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
   onNoteAdd, onNoteUpdate, onNoteDelete,
   onImageUpdate, onImageDelete,
   onFileUpdate, onFileDelete,
-  onCursorMove
+  onCursorMove,
+  penStyle
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -80,7 +82,7 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
   const isSelectTool = tool === ToolType.SELECT || tool === ToolType.IMAGE;
   const toolCursorColors: Record<ToolType, string> = {
     [ToolType.SELECT]: '#2563eb',
-    [ToolType.PEN]: '#0f172a',
+    [ToolType.PEN]: penStyle.cursorColor || penStyle.color,
     [ToolType.ERASER]: '#dc2626',
     [ToolType.NOTE]: '#d97706',
     [ToolType.IMAGE]: '#059669',
@@ -153,15 +155,15 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
     const currentPoints = currentPathPointsRef.current;
     if (currentPoints.length > 0) {
       ctx.beginPath();
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = penStyle.width;
+      ctx.strokeStyle = penStyle.color;
       ctx.moveTo(currentPoints[0].x, currentPoints[0].y);
       for (let i = 1; i < currentPoints.length; i++) {
         ctx.lineTo(currentPoints[i].x, currentPoints[i].y);
       }
       ctx.stroke();
     }
-  }, [paths, canvasSize]);
+  }, [paths, canvasSize, penStyle]);
 
   // Animation Loop
   useEffect(() => {
@@ -497,8 +499,8 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
             const newPath: Path = {
               id: uuidv4(),
               points: [...currentPathPointsRef.current], // Copy ref content
-              color: '#1e293b',
-              width: 3
+              color: penStyle.color,
+              width: penStyle.width
             };
             onPathAdd(newPath);
         }
@@ -748,21 +750,12 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
             top: note.y,
             width: note.width,
             height: note.height,
-            backgroundColor: note.color,
+            backgroundColor: note.authorColor || note.color,
             zIndex: 20,
             transform: dragItem?.id === note.id ? 'scale(1.02)' : 'none'
           }}
           onPointerDown={(e) => handleItemPointerDown(e, note.id, 'note')}
         >
-          {note.authorName && (
-            <div className="flex items-center gap-1 text-[10px] font-semibold text-slate-700 bg-white/70 px-1.5 py-0.5 rounded-full w-fit mb-1">
-              <span
-                className="inline-block w-2 h-2 rounded-full"
-                style={{ backgroundColor: note.authorColor || '#94a3b8' }}
-              ></span>
-              <span>{note.authorName}</span>
-            </div>
-          )}
           {isSelectTool && (
             <button 
               onPointerDown={(e) => { e.stopPropagation(); deleteItem(note.id, 'note'); }}
