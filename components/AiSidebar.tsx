@@ -27,7 +27,12 @@ export const AiSidebar: React.FC<AiSidebarProps> = ({ isOpen, onClose, onAddNote
       setTopic('');
     } catch (e) {
       console.error(e);
-      setAnalysis("アイデア生成に失敗しました。もう一度お試しください。");
+      const message = e instanceof Error ? e.message : '';
+      setAnalysis(
+        message.includes('API_KEY')
+          ? 'AIキーが未設定です。管理者にお問い合わせください。'
+          : 'アイデア生成に失敗しました。もう一度お試しください。'
+      );
     } finally {
       setLoading(false);
     }
@@ -42,7 +47,12 @@ export const AiSidebar: React.FC<AiSidebarProps> = ({ isOpen, onClose, onAddNote
       setAnalysis(result);
     } catch (e) {
       console.error(e);
-      setAnalysis("ボードの解析に失敗しました。");
+      const message = e instanceof Error ? e.message : '';
+      setAnalysis(
+        message.includes('API_KEY')
+          ? 'AIキーが未設定です。管理者にお問い合わせください。'
+          : 'ボードの解析に失敗しました。'
+      );
     } finally {
       setLoading(false);
     }

@@ -335,12 +335,12 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
       // Add note
       const newNote: StickyNote = {
         id: uuidv4(),
-        x: pos.x - 50,
-        y: pos.y - 50,
+        x: pos.x - 100,
+        y: pos.y - 25,
         text: '',
         color: '#fef3c7', 
-        width: 100,
-        height: 100
+        width: 200,
+        height: 50
       };
       onNoteAdd(newNote);
     } else if (isSelectTool) {
@@ -742,7 +742,7 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
       {notes.map(note => (
         <div
           key={note.id}
-          className={`absolute shadow-lg flex flex-col p-4 group touch-none ${itemPointerEvents}`}
+          className={`absolute shadow-lg flex flex-col p-3 group touch-none ${itemPointerEvents}`}
           style={{
             left: note.x,
             top: note.y,
@@ -754,6 +754,15 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
           }}
           onPointerDown={(e) => handleItemPointerDown(e, note.id, 'note')}
         >
+          {note.authorName && (
+            <div className="flex items-center gap-1 text-[10px] font-semibold text-slate-700 bg-white/70 px-1.5 py-0.5 rounded-full w-fit mb-1">
+              <span
+                className="inline-block w-2 h-2 rounded-full"
+                style={{ backgroundColor: note.authorColor || '#94a3b8' }}
+              ></span>
+              <span>{note.authorName}</span>
+            </div>
+          )}
           {isSelectTool && (
             <button 
               onPointerDown={(e) => { e.stopPropagation(); deleteItem(note.id, 'note'); }}
@@ -763,7 +772,7 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
             </button>
           )}
           <textarea
-            className={`w-full h-full bg-transparent resize-none outline-none text-gray-800 font-medium placeholder-gray-400/70 select-text cursor-text ${itemPointerEvents}`}
+            className={`flex-1 w-full bg-transparent resize-none outline-none text-gray-800 font-medium placeholder-gray-400/70 select-text cursor-text ${itemPointerEvents}`}
             placeholder="Type here..."
             value={note.text}
             onChange={(e) => updateNoteText(note.id, e.target.value, e.currentTarget.scrollHeight)}

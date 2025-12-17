@@ -27,6 +27,9 @@ export interface StickyNote {
   color: string;
   width: number;
   height: number;
+  authorId?: string;
+  authorName?: string;
+  authorColor?: string;
 }
 
 export interface BoardImage {

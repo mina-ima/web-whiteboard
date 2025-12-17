@@ -17,7 +17,34 @@ const Y_WEBSOCKET_SERVER_URL = normalizeWebsocketUrl(
 );
 const CONNECTION_TIMEOUT_MS = 8000;
 
-const USER_COLORS = ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#10b981', '#06b6d4', '#3b82f6', '#8b5cf6', '#d946ef', '#f43f5e'];
+const USER_COLORS = [
+  '#fee2e2',
+  '#ffedd5',
+  '#fef3c7',
+  '#ecfccb',
+  '#d1fae5',
+  '#cffafe',
+  '#dbeafe',
+  '#ede9fe',
+  '#fce7f3',
+  '#f5f5f5',
+  '#e2e8f0',
+  '#e0f2fe',
+];
+
+const getOrCreateUserId = () => {
+  if (typeof window === 'undefined') {
+    return `user-${Math.random().toString(36).slice(2)}`;
+  }
+  const key = 'web-whiteboard-user-id';
+  const existing = window.localStorage.getItem(key);
+  if (existing) return existing;
+  const id = (crypto && 'randomUUID' in crypto)
+    ? crypto.randomUUID()
+    : `user-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  window.localStorage.setItem(key, id);
+  return id;
+};
 
 export const useWhiteboardStore = (roomId: string | null, passcode: string | null, userName: string, isCreator: boolean) => {
   const [paths, setPaths] = useState<Path[]>([]);
@@ -32,6 +59,8 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
   const ydocRef = useRef<Y.Doc | null>(null);
   const providerRef = useRef<WebsocketProvider | null>(null);
   const awarenessRef = useRef<any>(null);
+  const localUserRef = useRef<{ id: string; name: string; color: string; order: number } | null>(null);
+  const localUserIdRef = useRef<string>('');
 
   useEffect(() => {
     if (!roomId) {
@@ -63,6 +92,10 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
     setIsConnected(false);
     setIsAuthenticating(true);
 
+    if (!localUserIdRef.current) {
+      localUserIdRef.current = getOrCreateUserId();
+    }
+
     const ydoc = new Y.Doc();
     ydocRef.current = ydoc;
 
@@ -90,6 +123,7 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
 
     providerRef.current = provider;
     awarenessRef.current = provider.awareness;
+    const yUsers = ydoc.getMap<{ name: string; color: string; order: number }>('users');
 
     const handleStatus = (event: { status: string }) => {
       if (!isActive) return;
@@ -118,9 +152,57 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
     provider.on('connection-error', handleConnectionError);
     provider.on('connection-close', handleConnectionClose);
 
+    const ensureLocalUser = () => {
+      const userId = localUserIdRef.current;
+      if (!userId) return;
+      const existing = yUsers.get(userId);
+      if (existing) {
+        const updated =
+          existing.name !== userName
+            ? { ...existing, name: userName }
+            : existing;
+        if (updated !== existing) {
+          yUsers.set(userId, updated);
+        }
+        localUserRef.current = {
+          id: userId,
+          name: updated.name,
+          color: updated.color,
+          order: updated.order,
+        };
+      } else {
+        const orders = Array.from(yUsers.values())
+          .map((user) => user.order)
+          .filter((value) => Number.isFinite(value));
+        const nextOrder = orders.length > 0 ? Math.max(...orders) + 1 : 0;
+        const entry = {
+          name: userName,
+          color: USER_COLORS[nextOrder % USER_COLORS.length],
+          order: nextOrder,
+        };
+        yUsers.set(userId, entry);
+        localUserRef.current = {
+          id: userId,
+          name: entry.name,
+          color: entry.color,
+          order: entry.order,
+        };
+      }
+
+      if (awarenessRef.current && localUserRef.current) {
+        awarenessRef.current.setLocalStateField('user', {
+          name: localUserRef.current.name,
+          color: localUserRef.current.color,
+        });
+      }
+    };
+
     provider.on('synced', ({ synced }: { synced: boolean }) => {
       if (!isActive) return;
       console.log(`[YJS] Synced: ${synced}`);
+      if (synced) {
+        ensureLocalUser();
+      }
     });
 
     // Awareness change イベント復活
@@ -259,7 +341,16 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
     (note: StickyNote) => {
       const ydoc = ydocRef.current;
       if (!ydoc) return;
-      ydoc.getMap<StickyNote>('notes').set(note.id, note);
+      const localUser = localUserRef.current;
+      const fallbackColor = note.color || USER_COLORS[0];
+      const nextNote: StickyNote = {
+        ...note,
+        color: localUser?.color || fallbackColor,
+        authorId: localUser?.id || note.authorId,
+        authorName: localUser?.name || note.authorName || userName,
+        authorColor: localUser?.color || note.authorColor || fallbackColor,
+      };
+      ydoc.getMap<StickyNote>('notes').set(note.id, nextNote);
       ydoc.getMap<NoteMeta>('notes_meta').set(note.id, {
         id: note.id,
         x: note.x,
@@ -268,7 +359,7 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
         height: note.height,
       });
     },
-    []
+    [userName]
   );
 
   const updateNote = useCallback(
@@ -303,7 +394,14 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
         existing.text !== note.text ||
         existing.color !== note.color
       ) {
-        yNotes.set(note.id, { ...existing, text: note.text, color: note.color });
+        yNotes.set(note.id, {
+          ...existing,
+          text: note.text,
+          color: existing.color || note.color,
+          authorId: existing.authorId || note.authorId,
+          authorName: existing.authorName || note.authorName,
+          authorColor: existing.authorColor || note.authorColor,
+        });
       }
     },
     []

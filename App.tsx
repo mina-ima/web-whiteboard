@@ -100,12 +100,12 @@ const App: React.FC = () => {
     ideas.forEach((idea, index) => {
       const note: StickyNote = {
         id: uuidv4(),
-        x: 140 + (index % 4) * 120,
-        y: 140 + Math.floor(index / 4) * 120,
+        x: 120 + (index % 3) * 220,
+        y: 140 + Math.floor(index / 3) * 90,
         text: idea,
         color: STICKY_COLORS[index % STICKY_COLORS.length],
-        width: 100,
-        height: 100
+        width: 200,
+        height: 50
       };
       addNote(note);
     });
