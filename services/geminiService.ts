@@ -1,70 +1,43 @@
-import { GoogleGenAI, Type } from "@google/genai";
+const DEFAULT_WEBSOCKET_SERVER_URL =
+  'wss://web-whiteboard-signaling.minamidenshi.workers.dev/websocket';
 
-const getAiClient = () => {
-  const apiKey =
-    import.meta.env.VITE_GEMINI_API_KEY ||
-    import.meta.env.VITE_API_KEY ||
-    process.env.API_KEY;
-  if (!apiKey) {
-    throw new Error("API_KEY is not defined");
+const getAiProxyBaseUrl = () => {
+  const explicit = import.meta.env.VITE_AI_PROXY_URL as string | undefined;
+  if (explicit) return explicit.replace(/\/$/, '');
+
+  const wsUrl =
+    (import.meta.env.VITE_Y_WEBSOCKET_SERVER_URL as string | undefined) ||
+    DEFAULT_WEBSOCKET_SERVER_URL;
+  try {
+    const httpUrl = wsUrl.replace(/^wss:/, 'https:').replace(/^ws:/, 'http:');
+    const url = new URL(httpUrl);
+    url.pathname = url.pathname.replace(/\/websocket\/?$/, '') + '/ai';
+    return url.toString().replace(/\/$/, '');
+  } catch {
+    return 'https://web-whiteboard-signaling.minamidenshi.workers.dev/ai';
   }
-  return new GoogleGenAI({ apiKey });
+};
+
+const requestAi = async <T>(path: string, payload: Record<string, unknown>): Promise<T> => {
+  const response = await fetch(`${getAiProxyBaseUrl()}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const message = (data && (data as { error?: string }).error) || 'AI request failed';
+    throw new Error(message);
+  }
+  return data as T;
 };
 
 export const generateBrainstormingIdeas = async (topic: string): Promise<string[]> => {
-  const ai = getAiClient();
-  
-  try {
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: `Generate 5 short, concise ideas or key points about: "${topic}". keep them under 10 words each.`,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.STRING
-          }
-        }
-      }
-    });
-
-    const text = response.text;
-    if (!text) return [];
-    return JSON.parse(text) as string[];
-  } catch (error) {
-    console.error("Error generating ideas:", error);
-    throw error;
-  }
+  const data = await requestAi<{ ideas?: string[] }>('/brainstorm', { topic });
+  return data.ideas || [];
 };
 
 export const analyzeBoard = async (imageData: string): Promise<string> => {
-  const ai = getAiClient();
-  
-  // Strip the prefix if present (e.g., "data:image/png;base64,")
-  const base64Data = imageData.split(',')[1] || imageData;
-
-  try {
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: {
-        parts: [
-          {
-            inlineData: {
-              mimeType: "image/png",
-              data: base64Data
-            }
-          },
-          {
-            text: "Analyze this whiteboard session. Summarize the key themes found in the drawings and sticky notes. If there are action items, list them. Be concise."
-          }
-        ]
-      }
-    });
-
-    return response.text || "ボードを解析できませんでした。";
-  } catch (error) {
-    console.error("Error analyzing board:", error);
-    return "AIアシスタントに接続できませんでした。";
-  }
+  const data = await requestAi<{ text?: string }>('/analyze', { imageData });
+  return data.text || 'ボードを解析できませんでした。';
 };

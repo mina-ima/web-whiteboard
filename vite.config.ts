@@ -9,9 +9,6 @@ const __dirname = path.dirname(__filename);
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
-  define: {
-    'process.env.API_KEY': JSON.stringify(process.env.API_KEY),
-  },
   resolve: {
     alias: {
       buffer: 'buffer',
