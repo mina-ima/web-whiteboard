@@ -140,6 +140,7 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
     providerRef.current = provider;
     awarenessRef.current = provider.awareness;
     const yUsers = ydoc.getMap<{ name: string; color: string; order: number }>('users');
+    const yUserOrder = ydoc.getArray<string>('user_order');
 
     const handleStatus = (event: { status: string }) => {
       if (!isActive) return;
@@ -171,11 +172,31 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
     const ensureLocalUser = () => {
       const userId = localUserIdRef.current;
       if (!userId) return;
+      let orderIds = yUserOrder.toArray();
+      if (!orderIds.includes(userId)) {
+        yUserOrder.push([userId]);
+        orderIds = yUserOrder.toArray();
+      }
+      const uniqueOrderIds: string[] = [];
+      const seen = new Set<string>();
+      orderIds.forEach((id) => {
+        if (!seen.has(id)) {
+          seen.add(id);
+          uniqueOrderIds.push(id);
+        }
+      });
+      let order = uniqueOrderIds.indexOf(userId);
+      if (order < 0) {
+        uniqueOrderIds.push(userId);
+        order = uniqueOrderIds.length - 1;
+      }
+      const color = USER_COLORS[order % USER_COLORS.length];
+
       const existing = yUsers.get(userId);
       if (existing) {
         const updated =
-          existing.name !== userName
-            ? { ...existing, name: userName }
+          existing.name !== userName || existing.order !== order || existing.color !== color
+            ? { ...existing, name: userName, order, color }
             : existing;
         if (updated !== existing) {
           yUsers.set(userId, updated);
@@ -183,25 +204,21 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
         localUserRef.current = {
           id: userId,
           name: updated.name,
-          color: updated.color,
-          order: updated.order,
+          color,
+          order,
         };
       } else {
-        const orders = Array.from(yUsers.values())
-          .map((user) => user.order)
-          .filter((value) => Number.isFinite(value));
-        const nextOrder = orders.length > 0 ? Math.max(...orders) + 1 : 0;
         const entry = {
           name: userName,
-          color: USER_COLORS[nextOrder % USER_COLORS.length],
-          order: nextOrder,
+          color,
+          order,
         };
         yUsers.set(userId, entry);
         localUserRef.current = {
           id: userId,
           name: entry.name,
-          color: entry.color,
-          order: entry.order,
+          color,
+          order,
         };
       }
 
@@ -267,14 +284,26 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
 
     const syncData = () => {
       setPaths(yPaths.toArray());
+      const orderIds = yUserOrder.toArray();
+      const orderMap = new Map<string, number>();
+      orderIds.forEach((id) => {
+        if (!orderMap.has(id)) {
+          orderMap.set(id, orderMap.size);
+        }
+      });
       const noteEntries = Array.from(yNotes.entries());
       setNotes(
         noteEntries.map(([id, note]) => {
           const meta = yNoteMeta.get(id);
           const owner = note.authorId ? yUsers.get(note.authorId) : null;
-          const resolvedColor = owner?.color || note.authorColor || note.color;
+          const derivedOrder =
+            (note.authorId && orderMap.get(note.authorId)) ?? owner?.order;
+          const resolvedColor =
+            derivedOrder !== undefined
+              ? USER_COLORS[derivedOrder % USER_COLORS.length]
+              : owner?.color || note.authorColor || note.color;
           const resolvedName = owner?.name || note.authorName;
-          const resolvedAuthorColor = owner?.color || note.authorColor;
+          const resolvedAuthorColor = resolvedColor;
           const base = {
             ...note,
             color: resolvedColor,
@@ -306,6 +335,7 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
     yNotes.observe(syncData);
     yNoteMeta.observe(syncData);
     yUsers.observe(syncData);
+    yUserOrder.observe(syncData);
     yImages.observe(syncData);
     yImageMeta.observe(syncData);
     yFiles.observe(syncData);

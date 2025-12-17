@@ -4,6 +4,8 @@ const DEFAULT_WEBSOCKET_SERVER_URL =
 const normalizeAiUrl = (input: string) => {
   try {
     const url = new URL(input);
+    if (url.protocol === 'ws:') url.protocol = 'http:';
+    if (url.protocol === 'wss:') url.protocol = 'https:';
     url.search = '';
     url.hash = '';
     return url.toString().replace(/\/$/, '');
