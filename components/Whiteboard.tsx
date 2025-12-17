@@ -300,6 +300,43 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
     });
   };
 
+  const hasErasableAt = (pos: Point) => {
+    const ERASER_RADIUS = 20; 
+    const hitPath = paths.some(path => {
+      for (let i = 0; i < path.points.length - 1; i++) {
+        if (distToSegment(pos, path.points[i], path.points[i + 1]) < ERASER_RADIUS) {
+          return true;
+        }
+      }
+      return false;
+    });
+    if (hitPath) return true;
+    const hitNote = notes.some(
+      note =>
+        pos.x >= note.x &&
+        pos.x <= note.x + note.width &&
+        pos.y >= note.y &&
+        pos.y <= note.y + note.height
+    );
+    if (hitNote) return true;
+    const hitImage = images.some(
+      img =>
+        pos.x >= img.x &&
+        pos.x <= img.x + img.width &&
+        pos.y >= img.y &&
+        pos.y <= img.y + (img.height || 200)
+    );
+    if (hitImage) return true;
+    const hitFile = files.some(
+      f =>
+        pos.x >= f.x &&
+        pos.x <= f.x + f.width &&
+        pos.y >= f.y &&
+        pos.y <= f.y + f.height
+    );
+    return hitFile;
+  };
+
   const getPos = (e: React.PointerEvent): Point => {
     const container = containerRef.current;
     if (!container) return { x: 0, y: 0 };
@@ -318,6 +355,9 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
     const pos = getPos(e);
 
     if (tool === ToolType.ERASER) {
+      if (!hasErasableAt(pos)) {
+        return;
+      }
       if (!window.confirm('削除してもよろしいですか？')) {
         return;
       }
