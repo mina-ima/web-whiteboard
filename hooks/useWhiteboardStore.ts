@@ -271,7 +271,17 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
       setNotes(
         noteEntries.map(([id, note]) => {
           const meta = yNoteMeta.get(id);
-          return meta ? { ...note, ...meta } : note;
+          const owner = note.authorId ? yUsers.get(note.authorId) : null;
+          const resolvedColor = owner?.color || note.authorColor || note.color;
+          const resolvedName = owner?.name || note.authorName;
+          const resolvedAuthorColor = owner?.color || note.authorColor;
+          const base = {
+            ...note,
+            color: resolvedColor,
+            authorColor: resolvedAuthorColor,
+            authorName: resolvedName,
+          };
+          return meta ? { ...base, ...meta } : base;
         })
       );
       const imageEntries = Array.from(yImages.entries());
@@ -295,6 +305,7 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
     yPaths.observe(syncData);
     yNotes.observe(syncData);
     yNoteMeta.observe(syncData);
+    yUsers.observe(syncData);
     yImages.observe(syncData);
     yImageMeta.observe(syncData);
     yFiles.observe(syncData);

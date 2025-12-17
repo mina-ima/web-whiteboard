@@ -90,13 +90,13 @@ export const PEN_STYLES: PenStyle[] = [
   { id: 'red', label: '赤', color: '#ef4444', width: 3 },
   { id: 'blue', label: '青', color: '#3b82f6', width: 3 },
   { id: 'green', label: '緑', color: '#22c55e', width: 3 },
-  { id: 'orange', label: 'オレンジ', color: '#f97316', width: 3 },
-  { id: 'pink', label: 'ピンク', color: '#ec4899', width: 3 },
+  { id: 'orange', label: 'オレンジ', color: '#ff6b00', width: 3 },
+  { id: 'pink', label: 'ピンク', color: '#ff3ea5', width: 3 },
   {
     id: 'highlighter',
     label: '蛍光ペン',
-    color: 'rgba(250, 204, 21, 0.45)',
-    width: 10,
-    cursorColor: '#facc15',
+    color: 'rgba(255, 244, 79, 0.55)',
+    width: 12,
+    cursorColor: '#ffeb3b',
   },
 ];
