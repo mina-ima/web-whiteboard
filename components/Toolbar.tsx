@@ -39,37 +39,49 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     {
       active: string;
       idle: string;
+      iconClass: string;
+      activeIconClass: string;
       Icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
       ActiveIcon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
     }
   > = {
     [ToolType.SELECT]: {
-      active: 'bg-blue-600 text-white shadow-lg scale-105 border-blue-600',
-      idle: 'bg-white text-blue-600 hover:bg-blue-50 border-blue-100 shadow-sm',
+      active: 'bg-blue-100 shadow-lg scale-105 border-blue-300 ring-2 ring-blue-200/60',
+      idle: 'bg-white hover:bg-blue-50 border-blue-100 shadow-sm',
+      iconClass: 'text-blue-600',
+      activeIconClass: 'text-blue-700',
       Icon: CursorArrowRaysIconOutline,
       ActiveIcon: CursorArrowRaysIconSolid,
     },
     [ToolType.PEN]: {
-      active: 'bg-slate-800 text-white shadow-lg scale-105 border-slate-800',
-      idle: 'bg-white text-slate-700 hover:bg-slate-50 border-slate-200 shadow-sm',
+      active: 'bg-slate-100 shadow-lg scale-105 border-slate-300 ring-2 ring-slate-200/70',
+      idle: 'bg-white hover:bg-slate-50 border-slate-200 shadow-sm',
+      iconClass: 'text-slate-700',
+      activeIconClass: 'text-slate-900',
       Icon: PencilIconOutline,
       ActiveIcon: PencilIconSolid,
     },
     [ToolType.ERASER]: {
-      active: 'bg-red-600 text-white shadow-lg scale-105 border-red-600',
-      idle: 'bg-white text-red-600 hover:bg-red-50 border-red-100 shadow-sm',
+      active: 'bg-red-100 shadow-lg scale-105 border-red-300 ring-2 ring-red-200/70',
+      idle: 'bg-white hover:bg-red-50 border-red-100 shadow-sm',
+      iconClass: 'text-red-600',
+      activeIconClass: 'text-red-700',
       Icon: BackspaceIconOutline,
       ActiveIcon: BackspaceIconSolid,
     },
     [ToolType.NOTE]: {
-      active: 'bg-amber-500 text-white shadow-lg scale-105 border-amber-500',
-      idle: 'bg-white text-amber-600 hover:bg-amber-50 border-amber-100 shadow-sm',
+      active: 'bg-amber-100 shadow-lg scale-105 border-amber-300 ring-2 ring-amber-200/70',
+      idle: 'bg-white hover:bg-amber-50 border-amber-100 shadow-sm',
+      iconClass: 'text-amber-600',
+      activeIconClass: 'text-amber-700',
       Icon: DocumentTextIconOutline,
       ActiveIcon: DocumentTextIconSolid,
     },
     [ToolType.IMAGE]: {
-      active: 'bg-emerald-600 text-white shadow-lg scale-105 border-emerald-600',
-      idle: 'bg-white text-emerald-600 hover:bg-emerald-50 border-emerald-100 shadow-sm',
+      active: 'bg-emerald-100 shadow-lg scale-105 border-emerald-300 ring-2 ring-emerald-200/70',
+      idle: 'bg-white hover:bg-emerald-50 border-emerald-100 shadow-sm',
+      iconClass: 'text-emerald-600',
+      activeIconClass: 'text-emerald-700',
       Icon: PhotoIconOutline,
       ActiveIcon: PhotoIconSolid,
     },
@@ -83,7 +95,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   const renderToolIcon = (tool: ToolType) => {
     const config = toolConfig[tool];
     const IconComponent = currentTool === tool ? config.ActiveIcon : config.Icon;
-    return <IconComponent className="w-6 h-6" />;
+    const iconClass = currentTool === tool ? config.activeIconClass : config.iconClass;
+    return <IconComponent className={`w-6 h-6 ${iconClass}`} />;
   };
 
   return (

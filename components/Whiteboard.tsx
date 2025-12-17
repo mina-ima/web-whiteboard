@@ -23,6 +23,7 @@ interface WhiteboardProps {
   // Sync Handlers
   onPathAdd: (path: Path) => void;
   onPathsDelete: (ids: string[]) => void;
+  onPathsUpdate: (paths: Path[]) => void;
   
   onNoteAdd: (note: StickyNote) => void;
   onNoteUpdate: (note: StickyNote) => void;
@@ -37,9 +38,23 @@ interface WhiteboardProps {
   onCursorMove: (point: Point | null) => void;
 }
 
+interface Bounds {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+interface PathTransform {
+  mode: 'move' | 'resize';
+  start: Point;
+  bounds: Bounds;
+  originPaths: Path[];
+}
+
 export const Whiteboard: React.FC<WhiteboardProps> = ({ 
   tool, paths, notes, images, files, remoteUsers,
-  onPathAdd, onPathsDelete,
+  onPathAdd, onPathsDelete, onPathsUpdate,
   onNoteAdd, onNoteUpdate, onNoteDelete,
   onImageUpdate, onImageDelete,
   onFileUpdate, onFileDelete,
@@ -56,10 +71,27 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
   const [dragItem, setDragItem] = useState<{ type: 'note' | 'image' | 'file', id: string, offsetX: number, offsetY: number } | null>(null);
   const [resizeItem, setResizeItem] = useState<{ type: 'note' | 'image' | 'file', id: string, startX: number, startY: number, startWidth: number, startHeight: number } | null>(null);
   const [canvasSize, setCanvasSize] = useState<{ w: number, h: number } | null>(null);
+  const [selectedPathIds, setSelectedPathIds] = useState<string[]>([]);
+  const [selectionRect, setSelectionRect] = useState<{ start: Point; end: Point } | null>(null);
+  const [pathTransform, setPathTransform] = useState<PathTransform | null>(null);
 
   // Helper to determine if we should be writing ON TOP of everything
   const isPenOrEraser = tool === ToolType.PEN || tool === ToolType.ERASER;
   const isSelectTool = tool === ToolType.SELECT || tool === ToolType.IMAGE;
+  const toolCursorColors: Record<ToolType, string> = {
+    [ToolType.SELECT]: '#2563eb',
+    [ToolType.PEN]: '#0f172a',
+    [ToolType.ERASER]: '#dc2626',
+    [ToolType.NOTE]: '#d97706',
+    [ToolType.IMAGE]: '#059669',
+  };
+
+  const cursorSvg = (color: string) => {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20"><circle cx="10" cy="10" r="6" fill="white" stroke="${color}" stroke-width="2"/></svg>`;
+    return `url("data:image/svg+xml,${encodeURIComponent(svg)}") 10 10, auto`;
+  };
+
+  const cursorStyle = cursorSvg(toolCursorColors[tool] || '#334155');
 
   useEffect(() => {
     const handleResize = () => {
@@ -77,6 +109,14 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
     setTimeout(handleResize, 100);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  useEffect(() => {
+    if (!isSelectTool) {
+      setSelectedPathIds([]);
+      setSelectionRect(null);
+      setPathTransform(null);
+    }
+  }, [isSelectTool]);
 
   // Main Render Loop
   const renderCanvas = useCallback(() => {
@@ -155,6 +195,74 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
      return Math.sqrt(dist2(p, proj));
   };
 
+  const getPathBounds = (path: Path): Bounds => {
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    path.points.forEach((point) => {
+      minX = Math.min(minX, point.x);
+      minY = Math.min(minY, point.y);
+      maxX = Math.max(maxX, point.x);
+      maxY = Math.max(maxY, point.y);
+    });
+    if (!Number.isFinite(minX)) {
+      return { x: 0, y: 0, width: 0, height: 0 };
+    }
+    return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+  };
+
+  const getBoundsFromPaths = (pathsToMeasure: Path[]): Bounds | null => {
+    if (pathsToMeasure.length === 0) return null;
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    pathsToMeasure.forEach((path) => {
+      const bounds = getPathBounds(path);
+      minX = Math.min(minX, bounds.x);
+      minY = Math.min(minY, bounds.y);
+      maxX = Math.max(maxX, bounds.x + bounds.width);
+      maxY = Math.max(maxY, bounds.y + bounds.height);
+    });
+    return {
+      x: minX,
+      y: minY,
+      width: maxX - minX,
+      height: maxY - minY,
+    };
+  };
+
+  const normalizeRect = (start: Point, end: Point): Bounds => {
+    const x = Math.min(start.x, end.x);
+    const y = Math.min(start.y, end.y);
+    return {
+      x,
+      y,
+      width: Math.abs(end.x - start.x),
+      height: Math.abs(end.y - start.y),
+    };
+  };
+
+  const rectsIntersect = (a: Bounds, b: Bounds) =>
+    a.x < b.x + b.width &&
+    a.x + a.width > b.x &&
+    a.y < b.y + b.height &&
+    a.y + a.height > b.y;
+
+  const getPathAtPoint = (pos: Point, threshold = 8) => {
+    let closest: { path: Path; distance: number } | null = null;
+    paths.forEach((path) => {
+      for (let i = 0; i < path.points.length - 1; i++) {
+        const dist = distToSegment(pos, path.points[i], path.points[i + 1]);
+        if (dist <= threshold && (!closest || dist < closest.distance)) {
+          closest = { path, distance: dist };
+        }
+      }
+    });
+    return closest?.path || null;
+  };
+
   const eraseAt = (pos: Point) => {
     const ERASER_RADIUS = 20; 
 
@@ -215,6 +323,9 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
     }
 
     if (tool === ToolType.ERASER) {
+      if (!window.confirm('削除してもよろしいですか？')) {
+        return;
+      }
       eraseAt(pos);
       isDrawingRef.current = true;
     } else if (tool === ToolType.PEN) {
@@ -232,6 +343,28 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
         height: 200
       };
       onNoteAdd(newNote);
+    } else if (isSelectTool) {
+      const hitPath = getPathAtPoint(pos);
+      if (hitPath) {
+        const currentSelection = selectedPathIds.includes(hitPath.id)
+          ? paths.filter((path) => selectedPathIds.includes(path.id))
+          : [hitPath];
+        setSelectedPathIds(currentSelection.map((path) => path.id));
+        const bounds = getBoundsFromPaths(currentSelection);
+        if (bounds) {
+          setPathTransform({
+            mode: 'move',
+            start: pos,
+            bounds,
+            originPaths: currentSelection,
+          });
+          containerRef.current?.setPointerCapture(e.pointerId);
+        }
+      } else {
+        setSelectedPathIds([]);
+        setSelectionRect({ start: pos, end: pos });
+        containerRef.current?.setPointerCapture(e.pointerId);
+      }
     }
   };
 
@@ -278,6 +411,40 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
       return;
     }
 
+    if (pathTransform) {
+      const { mode, start, bounds, originPaths } = pathTransform;
+      if (mode === 'move') {
+        const dx = pos.x - start.x;
+        const dy = pos.y - start.y;
+        const updated = originPaths.map((path) => ({
+          ...path,
+          points: path.points.map((point) => ({ x: point.x + dx, y: point.y + dy })),
+        }));
+        onPathsUpdate(updated);
+      } else {
+        const dx = pos.x - start.x;
+        const dy = pos.y - start.y;
+        const baseWidth = Math.max(bounds.width, 1);
+        const baseHeight = Math.max(bounds.height, 1);
+        const scaleX = Math.max(0.2, (baseWidth + dx) / baseWidth);
+        const scaleY = Math.max(0.2, (baseHeight + dy) / baseHeight);
+        const updated = originPaths.map((path) => ({
+          ...path,
+          points: path.points.map((point) => ({
+            x: bounds.x + (point.x - bounds.x) * scaleX,
+            y: bounds.y + (point.y - bounds.y) * scaleY,
+          })),
+        }));
+        onPathsUpdate(updated);
+      }
+      return;
+    }
+
+    if (selectionRect) {
+      setSelectionRect({ start: selectionRect.start, end: pos });
+      return;
+    }
+
     // 4. Handle Eraser
     if (tool === ToolType.ERASER && isDrawingRef.current) {
       eraseAt(pos);
@@ -306,14 +473,24 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
 
   const handlePointerUp = (e: React.PointerEvent) => {
     e.preventDefault();
-    if (containerRef.current && (tool === ToolType.PEN || tool === ToolType.ERASER)) {
-        if(containerRef.current.hasPointerCapture(e.pointerId)){
-            containerRef.current.releasePointerCapture(e.pointerId);
-        }
+    if (containerRef.current && containerRef.current.hasPointerCapture(e.pointerId)) {
+      containerRef.current.releasePointerCapture(e.pointerId);
     }
 
     if (dragItem) setDragItem(null);
     if (resizeItem) setResizeItem(null);
+    if (pathTransform) setPathTransform(null);
+
+    if (selectionRect) {
+      const rect = normalizeRect(selectionRect.start, selectionRect.end);
+      if (rect.width > 4 && rect.height > 4) {
+        const selected = paths
+          .filter((path) => rectsIntersect(getPathBounds(path), rect))
+          .map((path) => path.id);
+        setSelectedPathIds(selected);
+      }
+      setSelectionRect(null);
+    }
 
     if (isDrawingRef.current) {
         if (tool === ToolType.PEN && currentPathPointsRef.current.length > 0) {
@@ -368,6 +545,38 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
     if(item) onNoteUpdate({ ...item, text });
   };
 
+  const selectedPaths = selectedPathIds
+    .map((id) => paths.find((path) => path.id === id))
+    .filter((path): path is Path => Boolean(path));
+  const selectedBounds = getBoundsFromPaths(selectedPaths);
+  const selectionBounds = selectionRect ? normalizeRect(selectionRect.start, selectionRect.end) : null;
+
+  const handleSelectionMovePointerDown = (e: React.PointerEvent) => {
+    if (!selectedBounds || selectedPaths.length === 0) return;
+    e.stopPropagation();
+    containerRef.current?.setPointerCapture(e.pointerId);
+    const pos = getPos(e);
+    setPathTransform({
+      mode: 'move',
+      start: pos,
+      bounds: selectedBounds,
+      originPaths: selectedPaths,
+    });
+  };
+
+  const handleSelectionResizePointerDown = (e: React.PointerEvent) => {
+    if (!selectedBounds || selectedPaths.length === 0) return;
+    e.stopPropagation();
+    containerRef.current?.setPointerCapture(e.pointerId);
+    const pos = getPos(e);
+    setPathTransform({
+      mode: 'resize',
+      start: pos,
+      bounds: selectedBounds,
+      originPaths: selectedPaths,
+    });
+  };
+
   const deleteItem = (id: string, type: 'note' | 'image' | 'file') => {
     if (type === 'note') onNoteDelete(id);
     if (type === 'image') onImageDelete(id);
@@ -395,8 +604,8 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
   return (
     <div 
       ref={containerRef} 
-      className={`relative w-full h-full overflow-hidden bg-slate-50 dot-grid ${tool === ToolType.PEN ? 'cursor-crosshair' : tool === ToolType.ERASER ? 'cursor-pointer' : 'cursor-default'}`}
-      style={{ touchAction: 'none', userSelect: 'none' }} 
+      className="relative w-full h-full overflow-hidden bg-slate-50 dot-grid"
+      style={{ touchAction: 'none', userSelect: 'none', cursor: cursorStyle }} 
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
@@ -413,6 +622,37 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
         className="absolute top-0 left-0 w-full h-full touch-none"
         style={{ zIndex: isPenOrEraser ? 50 : 10 }}
       />
+
+      {/* Path selection */}
+      {isSelectTool && selectedBounds && (
+        <div
+          className="absolute border-2 border-blue-500/70 rounded-lg bg-blue-100/10 z-40"
+          style={{
+            left: selectedBounds.x,
+            top: selectedBounds.y,
+            width: selectedBounds.width,
+            height: selectedBounds.height,
+          }}
+          onPointerDown={handleSelectionMovePointerDown}
+        >
+          <div
+            className="absolute -bottom-2 -right-2 w-5 h-5 bg-white border border-blue-400 rounded-md shadow-sm cursor-nwse-resize"
+            onPointerDown={handleSelectionResizePointerDown}
+          ></div>
+        </div>
+      )}
+
+      {isSelectTool && selectionBounds && (
+        <div
+          className="absolute border border-blue-400/60 bg-blue-100/20 z-30 pointer-events-none"
+          style={{
+            left: selectionBounds.x,
+            top: selectionBounds.y,
+            width: selectionBounds.width,
+            height: selectionBounds.height,
+          }}
+        ></div>
+      )}
 
       {/* Files (z-15) */}
       {files.map(file => (

@@ -29,7 +29,7 @@ const App: React.FC = () => {
   // Hook into Real-time Store
   const { 
     paths, notes, images, files, isConnected, remoteUsers, connectionError, isAuthenticating,
-    addPath, deletePaths, clearBoard,
+    addPath, deletePaths, updatePaths, clearBoard,
     addNote, updateNote, deleteNote,
     addImage, updateImage, deleteImage,
     addFile, updateFile, deleteFile,
@@ -213,6 +213,7 @@ const App: React.FC = () => {
         
         onPathAdd={addPath}
         onPathsDelete={deletePaths}
+        onPathsUpdate={updatePaths}
         
         onNoteAdd={addNote}
         onNoteUpdate={updateNote}

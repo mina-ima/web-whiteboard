@@ -225,6 +225,21 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
       indexesToDelete.sort((a, b) => b - a).forEach((i) => yPaths.delete(i, 1));
     });
   }, []);
+  const updatePaths = useCallback((updatedPaths: Path[]) => {
+    const yPaths = ydocRef.current?.getArray<Path>('paths');
+    if (!yPaths) return;
+    const updateMap = new Map(updatedPaths.map((path) => [path.id, path]));
+    ydocRef.current?.transact(() => {
+      const current = yPaths.toArray() as Path[];
+      current.forEach((path, index) => {
+        const next = updateMap.get(path.id);
+        if (next) {
+          yPaths.delete(index, 1);
+          yPaths.insert(index, [next]);
+        }
+      });
+    });
+  }, []);
 
   const clearBoard = useCallback(() => {
     ydocRef.current?.transact(() => {
@@ -414,6 +429,7 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
     updateCursor,
     addPath,
     deletePaths,
+    updatePaths,
     clearBoard,
 
     addNote,
