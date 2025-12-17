@@ -59,9 +59,9 @@ export const analyzeBoard = async (imageData: string): Promise<string> => {
       }
     });
 
-    return response.text || "Could not analyze the board.";
+    return response.text || "ボードを解析できませんでした。";
   } catch (error) {
     console.error("Error analyzing board:", error);
-    return "Error connecting to AI assistant.";
+    return "AIアシスタントに接続できませんでした。";
   }
 };

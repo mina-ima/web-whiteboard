@@ -7,7 +7,7 @@ import { LoginScreen } from './components/LoginScreen';
 import { InviteModal } from './components/InviteModal';
 import { ToolType, StickyNote, BoardImage, BoardFile, STICKY_COLORS } from './types';
 import html2canvas from 'html2canvas';
-import { UserIcon, ClipboardDocumentIcon, SignalIcon, SignalSlashIcon, UsersIcon, ShieldCheckIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
+import { UserIcon, SignalIcon, SignalSlashIcon, UsersIcon, ShieldCheckIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import { useWhiteboardStore } from './hooks/useWhiteboardStore';
 
 interface UserSession {
@@ -152,47 +152,36 @@ const App: React.FC = () => {
 
   return (
     <div className="w-screen h-screen flex flex-col overflow-hidden relative" ref={appContainerRef}>
-      {/* Header / Info */}
-      <div className="absolute top-4 left-4 z-30 pointer-events-none select-none flex items-start gap-4">
-        <div>
-            <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Gemini SmartBoard</h1>
-            <div className="flex items-center gap-3 mt-1 pointer-events-auto">
-                <button className="text-sm text-slate-500 font-medium bg-white/80 backdrop-blur px-2 py-1 rounded-md border border-slate-200 shadow-sm cursor-copy hover:bg-white transition-colors" title="Copy Invite Info" onClick={() => setShowInvite(true)}>
-                    ルーム: <span className="text-indigo-600 font-mono">{session.roomId}</span>
-                </button>
-                <div className="w-px h-3 bg-slate-300"></div>
-                <div className="flex items-center gap-1 text-sm text-slate-500 bg-white/50 px-2 py-1 rounded-md">
-                    <UserIcon className="w-3 h-3" />
-                    <span>{session.userName}</span>
-                </div>
-                <div className="w-px h-3 bg-slate-300"></div>
-                <div className={`flex items-center gap-1 text-sm px-2 py-1 rounded-md bg-white/50 ${isConnected ? 'text-green-600' : 'text-amber-500'}`}>
-                    {isConnected ? <SignalIcon className="w-3 h-3" /> : <SignalSlashIcon className="w-3 h-3" />}
-                    <span>{isConnected ? '接続済み' : '再接続中...'}</span>
-                </div>
-                 <div className="w-px h-3 bg-slate-300"></div>
-                 <div className="flex items-center gap-1 text-sm text-slate-600 bg-white/50 px-2 py-1 rounded-md">
-                    <UsersIcon className="w-3 h-3" />
-                    <span>{remoteUsers.length + 1} オンライン</span> 
-                </div>
-                {session.passcode && (
-                     <div className="flex items-center gap-1 text-xs text-indigo-600 bg-indigo-50 px-2 py-1 rounded-md border border-indigo-100 ml-2">
-                        <ShieldCheckIcon className="w-3 h-3" />
-                        <span>暗号化済み</span>
-                    </div>
-                )}
+      {/* Compact Header / Info */}
+      <div className="absolute top-2 left-2 z-30 pointer-events-auto select-none">
+        <div className="flex items-center gap-2 bg-white/80 backdrop-blur px-2 py-1 rounded-full border border-slate-200 shadow-sm text-xs">
+            <button
+                className="font-medium text-slate-600 hover:text-indigo-600 transition-colors"
+                title="招待情報を表示"
+                onClick={() => setShowInvite(true)}
+            >
+                ルーム: <span className="font-mono text-indigo-600">{session.roomId}</span>
+            </button>
+            <div className="w-px h-3 bg-slate-300"></div>
+            <div className={`flex items-center gap-1 ${isConnected ? 'text-green-600' : 'text-amber-500'}`}>
+                {isConnected ? <SignalIcon className="w-3 h-3" /> : <SignalSlashIcon className="w-3 h-3" />}
+                <span>{isConnected ? '接続済み' : '再接続中...'}</span>
             </div>
+            <div className="hidden sm:flex items-center gap-1 text-slate-600">
+                <UsersIcon className="w-3 h-3" />
+                <span>{remoteUsers.length + 1}</span>
+            </div>
+            <div className="hidden md:flex items-center gap-1 text-slate-500">
+                <UserIcon className="w-3 h-3" />
+                <span>{session.userName}</span>
+            </div>
+            {session.passcode && (
+                 <div className="hidden md:flex items-center gap-1 text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100">
+                    <ShieldCheckIcon className="w-3 h-3" />
+                    <span>暗号化</span>
+                </div>
+            )}
         </div>
-      </div>
-
-      <div className="absolute top-4 right-4 z-30">
-        <button 
-            onClick={() => setShowInvite(true)}
-            className="p-2 bg-white text-indigo-600 rounded-full shadow-md hover:bg-gray-50 border border-gray-100 transition-colors"
-            title="招待情報を表示"
-        >
-            <ClipboardDocumentIcon className="w-5 h-5" />
-        </button>
       </div>
 
       {showInvite && (
