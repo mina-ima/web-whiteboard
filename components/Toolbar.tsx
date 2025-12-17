@@ -169,7 +169,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 
       <button 
         onClick={onAiToggle} 
-        className={`p-3 rounded-xl transition-all duration-200 flex items-center gap-2 font-medium ${
+        className={`p-3 rounded-xl transition-all duration-200 ${
           isAiOpen
             ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg' 
             : 'bg-white text-purple-600 hover:bg-purple-50 border border-purple-100 shadow-sm'
@@ -177,7 +177,6 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         title="AIアシスタント"
       >
         <SparklesIcon className="w-6 h-6" />
-        <span className="hidden sm:inline">AIコパイロット</span>
       </button>
     </div>
   );
