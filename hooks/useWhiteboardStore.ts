@@ -3,12 +3,19 @@ import * as Y from 'yjs';
 import { WebsocketProvider } from 'y-websocket';
 import { Path, StickyNote, BoardImage, BoardFile, UserAwareness } from '../types';
 
-// デバッグのため、一時的にY.js公式のデモサーバーに切り替え
-// Websocket Server URL（?room= まで含む環境変数）
-// const Y_WEBSOCKET_SERVER_URL =
-//   import.meta.env.VITE_Y_WEBSOCKET_SERVER_URL ||
-//   'ws://localhost:1234/websocket?room=';
-const Y_WEBSOCKET_SERVER_URL_FOR_DEBUG = 'wss://web-whiteboard-signaling.minamidenshi.workers.dev';
+type NoteMeta = Pick<StickyNote, 'id' | 'x' | 'y' | 'width' | 'height'>;
+type ImageMeta = Pick<BoardImage, 'id' | 'x' | 'y' | 'width' | 'height'>;
+type FileMeta = Pick<BoardFile, 'id' | 'x' | 'y' | 'width' | 'height'>;
+
+const DEFAULT_WEBSOCKET_SERVER_URL = 'wss://web-whiteboard-signaling.minamidenshi.workers.dev/websocket';
+const normalizeWebsocketUrl = (url: string) => {
+  const cleaned = url.trim().replace(/\\n/g, '').replace(/\?room=.*$/, '');
+  return cleaned || DEFAULT_WEBSOCKET_SERVER_URL;
+};
+const Y_WEBSOCKET_SERVER_URL = normalizeWebsocketUrl(
+  import.meta.env.VITE_Y_WEBSOCKET_SERVER_URL || DEFAULT_WEBSOCKET_SERVER_URL
+);
+const CONNECTION_TIMEOUT_MS = 8000;
 
 const USER_COLORS = ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#10b981', '#06b6d4', '#3b82f6', '#8b5cf6', '#d946ef', '#f43f5e'];
 
@@ -27,7 +34,27 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
   const awarenessRef = useRef<any>(null);
 
   useEffect(() => {
-    if (!roomId) return;
+    if (!roomId) {
+      if (providerRef.current) providerRef.current.destroy();
+      if (ydocRef.current) ydocRef.current.destroy();
+      providerRef.current = null;
+      ydocRef.current = null;
+      awarenessRef.current = null;
+      setIsConnected(false);
+      setIsAuthenticating(false);
+      return;
+    }
+
+    let isActive = true;
+    let didConnect = false;
+    let authTimeout: ReturnType<typeof setTimeout> | null = null;
+
+    const failAuthentication = (message: string) => {
+      if (!isActive || didConnect) return;
+      setConnectionError(message);
+      setIsAuthenticating(false);
+      setIsConnected(false);
+    };
 
     console.log(`[YJS] Init: room=${roomId}, user=${userName}, passcode=${passcode ? 'Yes' : 'No'}`);
 
@@ -36,34 +63,23 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
     setIsConnected(false);
     setIsAuthenticating(true);
 
-    // Cleanup previous session
-    if (providerRef.current) providerRef.current.destroy();
-    if (ydocRef.current) ydocRef.current.destroy();
-
     const ydoc = new Y.Doc();
     ydocRef.current = ydoc;
 
     // デバッグ用のルーム名。他のユーザーと衝突しないようにプレフィックスをつける
     const internalRoomName = `web-whiteboard-debug-${roomId}`;
 
-    // URL生成ロジックをデバッグ用に変更
-    // let wsUrl = `${Y_WEBSOCKET_SERVER_URL}${internalRoomName}`;
-    // if (passcode) {
-    //   wsUrl += `&passcode=${passcode}`;
-    // }
-    // console.log('[YJS-SETUP] WS URL:', wsUrl);
-
     // y-websocketのURL結合の癖を逆手に取り、URLを完全に手動で構築する
     const queryParams = new URLSearchParams({ room: internalRoomName });
     if (passcode) {
       queryParams.set('passcode', passcode);
     }
-    // "serverUrl + '/' + roomName" の結合で "wss://...dev/?room=..." となるように、
+    // "serverUrl + '/' + roomName" の結合で "wss://.../websocket/?room=..." となるように、
     // roomNameとしてクエリ文字列そのものを渡す
     const roomNameAsQuery = `?${queryParams.toString()}`;
 
     const provider = new WebsocketProvider(
-      Y_WEBSOCKET_SERVER_URL_FOR_DEBUG,
+      Y_WEBSOCKET_SERVER_URL,
       roomNameAsQuery,
       ydoc,
       {
@@ -75,22 +91,41 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
     providerRef.current = provider;
     awarenessRef.current = provider.awareness;
 
-    // 接続イベント
-    provider.on('status', (event: any) => {
+    const handleStatus = (event: { status: string }) => {
+      if (!isActive) return;
       console.log('[YJS-EVENT] status:', event);
-      const isConnected = event.status === 'connected';
-      setIsConnected(isConnected);
-      if (isConnected) {
+      const connected = event.status === 'connected';
+      setIsConnected(connected);
+      if (connected) {
+        didConnect = true;
+        setConnectionError(null);
         setIsAuthenticating(false);
-    }
-  });
+        if (authTimeout) clearTimeout(authTimeout);
+      }
+    };
+
+    const handleConnectionError = () => {
+      failAuthentication('接続に失敗しました。サーバーの状態を確認してください。');
+    };
+
+    const handleConnectionClose = (event: CloseEvent) => {
+      if (!isActive || didConnect) return;
+      const reason = event?.reason ? ` (${event.reason})` : '';
+      failAuthentication(`接続に失敗しました${reason}。`);
+    };
+
+    provider.on('status', handleStatus);
+    provider.on('connection-error', handleConnectionError);
+    provider.on('connection-close', handleConnectionClose);
 
     provider.on('synced', ({ synced }: { synced: boolean }) => {
+      if (!isActive) return;
       console.log(`[YJS] Synced: ${synced}`);
     });
 
     // Awareness change イベント復活
     awarenessRef.current.on('change', (changes: any) => {
+      if (!isActive) return;
       console.log(
         `[YJS-AWARENESS] added=${changes.added.length} updated=${changes.updated.length} removed=${changes.removed.length}`
       );
@@ -109,25 +144,63 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
     // Data Sync Setup
     const yPaths = ydoc.getArray<Path>('paths');
     const yNotes = ydoc.getMap<StickyNote>('notes');
+    const yNoteMeta = ydoc.getMap<NoteMeta>('notes_meta');
     const yImages = ydoc.getMap<BoardImage>('images');
+    const yImageMeta = ydoc.getMap<ImageMeta>('images_meta');
     const yFiles = ydoc.getMap<BoardFile>('files');
+    const yFileMeta = ydoc.getMap<FileMeta>('files_meta');
 
     const syncData = () => {
       setPaths(yPaths.toArray());
-      setNotes(Array.from(yNotes.values()));
-      setImages(Array.from(yImages.values()));
-      setFiles(Array.from(yFiles.values()));
+      const noteEntries = Array.from(yNotes.entries());
+      setNotes(
+        noteEntries.map(([id, note]) => {
+          const meta = yNoteMeta.get(id);
+          return meta ? { ...note, ...meta } : note;
+        })
+      );
+      const imageEntries = Array.from(yImages.entries());
+      setImages(
+        imageEntries.map(([id, image]) => {
+          const meta = yImageMeta.get(id);
+          return meta ? { ...image, ...meta } : image;
+        })
+      );
+      const fileEntries = Array.from(yFiles.entries());
+      setFiles(
+        fileEntries.map(([id, file]) => {
+          const meta = yFileMeta.get(id);
+          return meta ? { ...file, ...meta } : file;
+        })
+      );
     };
 
     syncData();
 
     yPaths.observe(syncData);
     yNotes.observe(syncData);
+    yNoteMeta.observe(syncData);
     yImages.observe(syncData);
+    yImageMeta.observe(syncData);
     yFiles.observe(syncData);
+    yFileMeta.observe(syncData);
+
+    authTimeout = setTimeout(() => {
+      failAuthentication('接続に失敗しました。URLやパスワードを確認してください。');
+    }, CONNECTION_TIMEOUT_MS);
 
     // WebSocket Connect
     provider.connect();
+
+    return () => {
+      isActive = false;
+      if (authTimeout) clearTimeout(authTimeout);
+      provider.off('status', handleStatus);
+      provider.off('connection-error', handleConnectionError);
+      provider.off('connection-close', handleConnectionClose);
+      provider.destroy();
+      ydoc.destroy();
+    };
   }, [roomId, passcode, userName, isCreator]);
 
   // Cursor Helper
@@ -159,46 +232,174 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
       if (p) p.delete(0, p.length);
 
       ydocRef.current?.getMap('notes').clear();
+      ydocRef.current?.getMap('notes_meta').clear();
       ydocRef.current?.getMap('images').clear();
+      ydocRef.current?.getMap('images_meta').clear();
       ydocRef.current?.getMap('files').clear();
+      ydocRef.current?.getMap('files_meta').clear();
     });
   }, []);
 
   const addNote = useCallback(
-    (note: StickyNote) => ydocRef.current?.getMap('notes').set(note.id, note),
+    (note: StickyNote) => {
+      const ydoc = ydocRef.current;
+      if (!ydoc) return;
+      ydoc.getMap<StickyNote>('notes').set(note.id, note);
+      ydoc.getMap<NoteMeta>('notes_meta').set(note.id, {
+        id: note.id,
+        x: note.x,
+        y: note.y,
+        width: note.width,
+        height: note.height,
+      });
+    },
     []
   );
 
   const updateNote = useCallback(
-    (note: StickyNote) => ydocRef.current?.getMap('notes').set(note.id, note),
+    (note: StickyNote) => {
+      const ydoc = ydocRef.current;
+      if (!ydoc) return;
+      const yNotes = ydoc.getMap<StickyNote>('notes');
+      const yNoteMeta = ydoc.getMap<NoteMeta>('notes_meta');
+      const existing = yNotes.get(note.id);
+      const existingMeta = yNoteMeta.get(note.id);
+      const nextMeta = {
+        id: note.id,
+        x: note.x,
+        y: note.y,
+        width: note.width,
+        height: note.height,
+      };
+
+      if (
+        !existingMeta ||
+        existingMeta.x !== nextMeta.x ||
+        existingMeta.y !== nextMeta.y ||
+        existingMeta.width !== nextMeta.width ||
+        existingMeta.height !== nextMeta.height
+      ) {
+        yNoteMeta.set(note.id, nextMeta);
+      }
+
+      if (!existing) {
+        yNotes.set(note.id, note);
+      } else if (
+        existing.text !== note.text ||
+        existing.color !== note.color
+      ) {
+        yNotes.set(note.id, { ...existing, text: note.text, color: note.color });
+      }
+    },
     []
   );
 
-  const deleteNote = useCallback((id: string) => ydocRef.current?.getMap('notes').delete(id), []);
+  const deleteNote = useCallback((id: string) => {
+    ydocRef.current?.getMap('notes').delete(id);
+    ydocRef.current?.getMap('notes_meta').delete(id);
+  }, []);
 
   const addImage = useCallback(
-    (img: BoardImage) => ydocRef.current?.getMap('images').set(img.id, img),
+    (img: BoardImage) => {
+      const ydoc = ydocRef.current;
+      if (!ydoc) return;
+      ydoc.getMap<BoardImage>('images').set(img.id, img);
+      ydoc.getMap<ImageMeta>('images_meta').set(img.id, {
+        id: img.id,
+        x: img.x,
+        y: img.y,
+        width: img.width,
+        height: img.height,
+      });
+    },
     []
   );
 
   const updateImage = useCallback(
-    (img: BoardImage) => ydocRef.current?.getMap('images').set(img.id, img),
+    (img: BoardImage) => {
+      const ydoc = ydocRef.current;
+      if (!ydoc) return;
+      const yImages = ydoc.getMap<BoardImage>('images');
+      const yImageMeta = ydoc.getMap<ImageMeta>('images_meta');
+      const existing = yImages.get(img.id);
+      const existingMeta = yImageMeta.get(img.id);
+      const nextMeta = {
+        id: img.id,
+        x: img.x,
+        y: img.y,
+        width: img.width,
+        height: img.height,
+      };
+
+      if (
+        !existingMeta ||
+        existingMeta.x !== nextMeta.x ||
+        existingMeta.y !== nextMeta.y ||
+        existingMeta.width !== nextMeta.width ||
+        existingMeta.height !== nextMeta.height
+      ) {
+        yImageMeta.set(img.id, nextMeta);
+      }
+
+      if (!existing) {
+        yImages.set(img.id, img);
+      }
+    },
     []
   );
 
-  const deleteImage = useCallback((id: string) => ydocRef.current?.getMap('images').delete(id), []);
+  const deleteImage = useCallback((id: string) => {
+    ydocRef.current?.getMap('images').delete(id);
+    ydocRef.current?.getMap('images_meta').delete(id);
+  }, []);
 
   const addFile = useCallback(
-    (file: BoardFile) => ydocRef.current?.getMap('files').set(file.id, file),
+    (file: BoardFile) => {
+      const ydoc = ydocRef.current;
+      if (!ydoc) return;
+      ydoc.getMap<BoardFile>('files').set(file.id, file);
+      ydoc.getMap<FileMeta>('files_meta').set(file.id, {
+        id: file.id,
+        x: file.x,
+        y: file.y,
+        width: file.width,
+        height: file.height,
+      });
+    },
     []
   );
 
   const updateFile = useCallback(
-    (file: BoardFile) => ydocRef.current?.getMap('files').set(file.id, file),
+    (file: BoardFile) => {
+      const ydoc = ydocRef.current;
+      if (!ydoc) return;
+      const yFileMeta = ydoc.getMap<FileMeta>('files_meta');
+      const existingMeta = yFileMeta.get(file.id);
+      const nextMeta = {
+        id: file.id,
+        x: file.x,
+        y: file.y,
+        width: file.width,
+        height: file.height,
+      };
+
+      if (
+        !existingMeta ||
+        existingMeta.x !== nextMeta.x ||
+        existingMeta.y !== nextMeta.y ||
+        existingMeta.width !== nextMeta.width ||
+        existingMeta.height !== nextMeta.height
+      ) {
+        yFileMeta.set(file.id, nextMeta);
+      }
+    },
     []
   );
 
-  const deleteFile = useCallback((id: string) => ydocRef.current?.getMap('files').delete(id), []);
+  const deleteFile = useCallback((id: string) => {
+    ydocRef.current?.getMap('files').delete(id);
+    ydocRef.current?.getMap('files_meta').delete(id);
+  }, []);
 
   return {
     paths,
