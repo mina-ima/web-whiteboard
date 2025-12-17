@@ -18,18 +18,18 @@ const Y_WEBSOCKET_SERVER_URL = normalizeWebsocketUrl(
 const CONNECTION_TIMEOUT_MS = 8000;
 
 const USER_COLORS = [
-  '#fee2e2',
-  '#ffedd5',
-  '#fef3c7',
-  '#ecfccb',
-  '#d1fae5',
-  '#cffafe',
-  '#dbeafe',
-  '#ede9fe',
-  '#fce7f3',
-  '#f5f5f5',
-  '#e2e8f0',
-  '#e0f2fe',
+  '#fde68a', // amber
+  '#fca5a5', // red
+  '#fdba74', // orange
+  '#fcd34d', // yellow
+  '#a7f3d0', // green
+  '#6ee7b7', // emerald
+  '#5eead4', // teal
+  '#7dd3fc', // sky
+  '#93c5fd', // blue
+  '#a5b4fc', // indigo
+  '#c4b5fd', // violet
+  '#f9a8d4', // pink
 ];
 
 const getOrCreateUserId = () => {
@@ -198,10 +198,7 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
         uniqueOrderIds.push(userId);
         order = uniqueOrderIds.length - 1;
       }
-      const color =
-        order >= 0
-          ? USER_COLORS[order % USER_COLORS.length]
-          : USER_COLORS[hashToColorIndex(userId, USER_COLORS.length)];
+      const color = USER_COLORS[hashToColorIndex(userId, USER_COLORS.length)];
 
       const existing = yUsers.get(userId);
       if (existing) {
@@ -297,26 +294,15 @@ export const useWhiteboardStore = (roomId: string | null, passcode: string | nul
 
     const syncData = () => {
       setPaths(yPaths.toArray());
-      const orderIds = yUserOrder.toArray();
-      const orderMap = new Map<string, number>();
-      orderIds.forEach((id) => {
-        if (!orderMap.has(id)) {
-          orderMap.set(id, orderMap.size);
-        }
-      });
       const noteEntries = Array.from(yNotes.entries());
       setNotes(
         noteEntries.map(([id, note]) => {
           const meta = yNoteMeta.get(id);
           const owner = note.authorId ? yUsers.get(note.authorId) : null;
-          const derivedOrder =
-            (note.authorId && orderMap.get(note.authorId)) ?? owner?.order;
           const resolvedColor =
-            derivedOrder !== undefined
-              ? USER_COLORS[derivedOrder % USER_COLORS.length]
-              : note.authorId
-                ? USER_COLORS[hashToColorIndex(note.authorId, USER_COLORS.length)]
-                : owner?.color || note.authorColor || note.color;
+            note.authorId
+              ? USER_COLORS[hashToColorIndex(note.authorId, USER_COLORS.length)]
+              : owner?.color || note.authorColor || note.color;
           const resolvedName = owner?.name || note.authorName;
           const resolvedAuthorColor = resolvedColor;
           const base = {
