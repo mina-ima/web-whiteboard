@@ -59,6 +59,7 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
 
   // Helper to determine if we should be writing ON TOP of everything
   const isPenOrEraser = tool === ToolType.PEN || tool === ToolType.ERASER;
+  const isSelectTool = tool === ToolType.SELECT || tool === ToolType.IMAGE;
 
   useEffect(() => {
     const handleResize = () => {
@@ -263,7 +264,7 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
     }
 
     // 3. Handle Drag
-    if (tool === ToolType.SELECT && dragItem) {
+    if (isSelectTool && dragItem) {
       if (dragItem.type === 'note') {
         const item = notes.find(n => n.id === dragItem.id);
         if(item) onNoteUpdate({ ...item, x: pos.x - dragItem.offsetX, y: pos.y - dragItem.offsetY });
@@ -331,7 +332,7 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
   };
 
   const handleItemPointerDown = (e: React.PointerEvent, id: string, type: 'note' | 'image' | 'file') => {
-    if (tool !== ToolType.SELECT) return;
+    if (!isSelectTool) return;
 
     e.stopPropagation();
     e.currentTarget.setPointerCapture(e.pointerId);
@@ -353,7 +354,7 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
   };
 
   const handleResizePointerDown = (e: React.PointerEvent, id: string, type: 'note' | 'image' | 'file', w: number, h: number) => {
-    if (tool !== ToolType.SELECT) return;
+    if (!isSelectTool) return;
     e.stopPropagation();
     // Capture on container to allow dragging outside item bounds
     containerRef.current?.setPointerCapture(e.pointerId);
@@ -421,7 +422,7 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
             style={{ left: file.x, top: file.y, width: file.width, height: file.height, zIndex: 15 }}
             onPointerDown={(e) => handleItemPointerDown(e, file.id, 'file')}
         >
-             {tool === ToolType.SELECT && (
+             {isSelectTool && (
               <button 
                 onPointerDown={(e) => { e.stopPropagation(); deleteItem(file.id, 'file'); }}
                 className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full p-1 shadow-sm z-20 pointer-events-auto hover:bg-red-600"
@@ -439,7 +440,7 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
                 <a 
                     href={file.data} 
                     download={file.fileName} 
-                    className={`p-1 hover:bg-gray-200 rounded text-gray-600 ${tool === ToolType.SELECT ? 'pointer-events-auto' : 'pointer-events-none'}`}
+                    className={`p-1 hover:bg-gray-200 rounded text-gray-600 ${isSelectTool ? 'pointer-events-auto' : 'pointer-events-none'}`}
                     onPointerDown={(e) => e.stopPropagation()}
                     title="Download"
                 >
@@ -447,7 +448,7 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
                 </a>
             </div>
 
-             {tool === ToolType.SELECT && (
+             {isSelectTool && (
                 <div
                     className="absolute -bottom-1 -right-1 w-6 h-6 bg-white border border-gray-300 rounded-tl-lg shadow-sm cursor-nwse-resize z-20 flex items-center justify-center pointer-events-auto"
                     onPointerDown={(e) => handleResizePointerDown(e, file.id, 'file', file.width, file.height)}
@@ -472,7 +473,7 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
                 alt="Board Upload" 
                 className="w-full h-full object-fill pointer-events-none select-none rounded shadow-md" 
              />
-             {tool === ToolType.SELECT && (
+             {isSelectTool && (
               <button 
                 onPointerDown={(e) => { e.stopPropagation(); deleteItem(img.id, 'image'); }}
                 className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full p-1 shadow-sm z-20 pointer-events-auto hover:bg-red-600"
@@ -480,7 +481,7 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
                 <XMarkIcon className="w-3 h-3" />
               </button>
              )}
-             {tool === ToolType.SELECT && (
+             {isSelectTool && (
                 <div
                     className="absolute -bottom-1 -right-1 w-6 h-6 bg-white border border-gray-300 rounded-tl-lg shadow-sm cursor-nwse-resize z-20 flex items-center justify-center pointer-events-auto"
                     onPointerDown={(e) => handleResizePointerDown(e, img.id, 'image', img.width, img.height || 200)}
@@ -508,7 +509,7 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
           }}
           onPointerDown={(e) => handleItemPointerDown(e, note.id, 'note')}
         >
-          {tool === ToolType.SELECT && (
+          {isSelectTool && (
             <button 
               onPointerDown={(e) => { e.stopPropagation(); deleteItem(note.id, 'note'); }}
               className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-sm z-30 pointer-events-auto hover:bg-red-600"
@@ -523,7 +524,7 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
             onChange={(e) => updateNoteText(note.id, e.target.value)}
             onPointerDown={(e) => e.stopPropagation()} 
           />
-          {tool === ToolType.SELECT && (
+          {isSelectTool && (
             <div
                 className="absolute bottom-0 right-0 w-6 h-6 bg-white/80 border border-gray-300 rounded-tl-lg shadow-sm cursor-nwse-resize z-30 flex items-center justify-center pointer-events-auto"
                 onPointerDown={(e) => handleResizePointerDown(e, note.id, 'note', note.width, note.height)}

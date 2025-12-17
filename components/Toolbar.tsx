@@ -1,14 +1,21 @@
 import React from 'react';
 import { ToolType } from '../types';
-import { 
-  CursorArrowRaysIcon, 
-  PencilIcon, 
-  DocumentTextIcon, 
-  PhotoIcon, 
+import {
+  CursorArrowRaysIcon as CursorArrowRaysIconOutline,
+  PencilIcon as PencilIconOutline,
+  DocumentTextIcon as DocumentTextIconOutline,
+  PhotoIcon as PhotoIconOutline,
   TrashIcon,
   SparklesIcon,
-  BackspaceIcon
+  BackspaceIcon as BackspaceIconOutline,
 } from '@heroicons/react/24/outline';
+import {
+  CursorArrowRaysIcon as CursorArrowRaysIconSolid,
+  PencilIcon as PencilIconSolid,
+  DocumentTextIcon as DocumentTextIconSolid,
+  PhotoIcon as PhotoIconSolid,
+  BackspaceIcon as BackspaceIconSolid,
+} from '@heroicons/react/24/solid';
 
 interface ToolbarProps {
   currentTool: ToolType;
@@ -27,12 +34,57 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   isAiOpen,
   onFileUpload
 }) => {
-  const buttonClass = (tool: ToolType) => 
-    `p-3 rounded-xl transition-all duration-200 ${
-      currentTool === tool 
-        ? 'bg-indigo-600 text-white shadow-lg scale-105' 
-        : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200 shadow-sm'
-    }`;
+  const toolConfig: Record<
+    ToolType,
+    {
+      active: string;
+      idle: string;
+      Icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+      ActiveIcon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+    }
+  > = {
+    [ToolType.SELECT]: {
+      active: 'bg-blue-600 text-white shadow-lg scale-105 border-blue-600',
+      idle: 'bg-white text-blue-600 hover:bg-blue-50 border-blue-100 shadow-sm',
+      Icon: CursorArrowRaysIconOutline,
+      ActiveIcon: CursorArrowRaysIconSolid,
+    },
+    [ToolType.PEN]: {
+      active: 'bg-slate-800 text-white shadow-lg scale-105 border-slate-800',
+      idle: 'bg-white text-slate-700 hover:bg-slate-50 border-slate-200 shadow-sm',
+      Icon: PencilIconOutline,
+      ActiveIcon: PencilIconSolid,
+    },
+    [ToolType.ERASER]: {
+      active: 'bg-red-600 text-white shadow-lg scale-105 border-red-600',
+      idle: 'bg-white text-red-600 hover:bg-red-50 border-red-100 shadow-sm',
+      Icon: BackspaceIconOutline,
+      ActiveIcon: BackspaceIconSolid,
+    },
+    [ToolType.NOTE]: {
+      active: 'bg-amber-500 text-white shadow-lg scale-105 border-amber-500',
+      idle: 'bg-white text-amber-600 hover:bg-amber-50 border-amber-100 shadow-sm',
+      Icon: DocumentTextIconOutline,
+      ActiveIcon: DocumentTextIconSolid,
+    },
+    [ToolType.IMAGE]: {
+      active: 'bg-emerald-600 text-white shadow-lg scale-105 border-emerald-600',
+      idle: 'bg-white text-emerald-600 hover:bg-emerald-50 border-emerald-100 shadow-sm',
+      Icon: PhotoIconOutline,
+      ActiveIcon: PhotoIconSolid,
+    },
+  };
+
+  const buttonClass = (tool: ToolType) => {
+    const config = toolConfig[tool];
+    return `p-3 rounded-xl transition-all duration-200 border ${currentTool === tool ? config.active : config.idle}`;
+  };
+
+  const renderToolIcon = (tool: ToolType) => {
+    const config = toolConfig[tool];
+    const IconComponent = currentTool === tool ? config.ActiveIcon : config.Icon;
+    return <IconComponent className="w-6 h-6" />;
+  };
 
   return (
     <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 flex items-center gap-3 p-2 bg-white/90 backdrop-blur-md rounded-2xl shadow-2xl border border-gray-200 z-[60]">
@@ -40,32 +92,36 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         onClick={() => setTool(ToolType.SELECT)} 
         className={buttonClass(ToolType.SELECT)}
         title="選択・移動"
+        aria-pressed={currentTool === ToolType.SELECT}
       >
-        <CursorArrowRaysIcon className="w-6 h-6" />
+        {renderToolIcon(ToolType.SELECT)}
       </button>
       
       <button 
         onClick={() => setTool(ToolType.PEN)} 
         className={buttonClass(ToolType.PEN)}
         title="フリーハンドペン"
+        aria-pressed={currentTool === ToolType.PEN}
       >
-        <PencilIcon className="w-6 h-6" />
+        {renderToolIcon(ToolType.PEN)}
       </button>
 
       <button 
         onClick={() => setTool(ToolType.ERASER)} 
         className={buttonClass(ToolType.ERASER)}
         title="消しゴム"
+        aria-pressed={currentTool === ToolType.ERASER}
       >
-        <BackspaceIcon className="w-6 h-6" />
+        {renderToolIcon(ToolType.ERASER)}
       </button>
 
       <button 
         onClick={() => setTool(ToolType.NOTE)} 
         className={buttonClass(ToolType.NOTE)}
         title="付箋を追加"
+        aria-pressed={currentTool === ToolType.NOTE}
       >
-        <DocumentTextIcon className="w-6 h-6" />
+        {renderToolIcon(ToolType.NOTE)}
       </button>
 
       <div className="relative">
@@ -80,8 +136,11 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           htmlFor="file-upload" 
           className={`cursor-pointer block ${buttonClass(ToolType.IMAGE)}`}
           title="画像またはファイルをアップロード"
+          onClick={() => setTool(ToolType.IMAGE)}
+          role="button"
+          aria-pressed={currentTool === ToolType.IMAGE}
         >
-          <PhotoIcon className="w-6 h-6" />
+          {renderToolIcon(ToolType.IMAGE)}
         </label>
       </div>
 
